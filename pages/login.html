@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Sign In</title>
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/pages/login.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="container auth-page">
+    <div id="app" class="card auth-card">
+      <div class="auth-tabs">
+        <button
+          type="button"
+          class="auth-tabs__btn"
+          :class="{ 'auth-tabs__btn--active': activeTab === 'login' }"
+          @click="activeTab = 'login'"
+        >Login</button>
+        <button
+          type="button"
+          class="auth-tabs__btn"
+          :class="{ 'auth-tabs__btn--active': activeTab === 'signup' }"
+          @click="activeTab = 'signup'"
+        >Sign Up</button>
+      </div>
+
+      <form v-if="activeTab === 'login'" class="auth-form" @submit.prevent="handleLogin">
+        <h2>Welcome back</h2>
+        <p v-if="signupSuccessMessage" class="form-success">{{ signupSuccessMessage }}</p>
+
+        <label class="form-field">
+          <span>Username</span>
+          <input type="text" v-model.trim="loginForm.userName" autocomplete="username" />
+        </label>
+
+        <label class="form-field">
+          <span>Password</span>
+          <input type="password" v-model="loginForm.password" autocomplete="current-password" />
+        </label>
+
+        <p v-if="loginError" class="form-error">{{ loginError }}</p>
+
+        <button type="submit" class="btn btn-primary auth-submit" :disabled="isSubmitting">
+          {{ isSubmitting ? "Signing in..." : "Sign In" }}
+        </button>
+      </form>
+
+      <form v-else class="auth-form" @submit.prevent="handleSignup">
+        <h2>Create your account</h2>
+
+        <label class="form-field">
+          <span>Username</span>
+          <input type="text" v-model.trim="signupForm.userName" autocomplete="username" />
+        </label>
+
+        <label class="form-field">
+          <span>Email</span>
+          <input type="email" v-model.trim="signupForm.email" autocomplete="email" />
+        </label>
+
+        <label class="form-field">
+          <span>Password</span>
+          <input type="password" v-model="signupForm.password" autocomplete="new-password" />
+        </label>
+
+        <p v-if="signupError" class="form-error">{{ signupError }}</p>
+
+        <button type="submit" class="btn btn-primary auth-submit" :disabled="isSubmitting">
+          {{ isSubmitting ? "Creating account..." : "Register Today!" }}
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/dom.js"></script>
+  <script src="../js/api/client.js"></script>
+  <script src="../js/api/auth.js"></script>
+  <script>
+    Naji.dom.loadNavbar("#navbar-mount");
+
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          activeTab: "login",
+          isSubmitting: false,
+          loginForm: { userName: "", password: "" },
+          signupForm: { userName: "", email: "", password: "" },
+          loginError: "",
+          signupError: "",
+          signupSuccessMessage: ""
+        };
+      },
+      methods: {
+        async handleLogin() {
+          this.loginError = "";
+
+          if (!this.loginForm.userName || !this.loginForm.password) {
+            this.loginError = "Please enter your username and password.";
+            return;
+          }
+
+          this.isSubmitting = true;
+          try {
+            await Naji.auth.login({
+              userName: this.loginForm.userName,
+              password: this.loginForm.password
+            });
+            window.location.href = "/pages/lobby.html";
+          } catch (error) {
+            this.loginError = error.message || "Unable to sign in.";
+          } finally {
+            this.isSubmitting = false;
+          }
+        },
+        async handleSignup() {
+          this.signupError = "";
+
+          const { userName, email, password } = this.signupForm;
+          if (!userName || !email || !password) {
+            this.signupError = "Please fill in username, email, and password.";
+            return;
+          }
+          if (password.length < 8) {
+            this.signupError = "Password must be at least 8 characters long.";
+            return;
+          }
+
+          this.isSubmitting = true;
+          try {
+            await Naji.auth.register({ userName, email, password });
+            this.signupSuccessMessage = "Account created — check your email to verify before signing in.";
+            this.signupForm = { userName: "", email: "", password: "" };
+            this.activeTab = "login";
+          } catch (error) {
+            this.signupError = error.message || "Unable to register.";
+          } finally {
+            this.isSubmitting = false;
+          }
+        }
+      }
+    }).mount("#app");
+  </script>
+</body>
+</html>

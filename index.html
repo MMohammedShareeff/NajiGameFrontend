@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/pages/home.css" />
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="container">
+    <section class="hero">
+      <img class="hero__logo" src="assets/images/naji-logo.png" alt="Naji" />
+      <h1 class="gradient-text">Survive the scenario. Outscore the room.</h1>
+      <p class="text-muted hero__description">
+        Naji drops your room into a new survival scenario every round. Write how you would survive,
+        get rated by AI, and climb the leaderboard across five rounds with up to four other players.
+      </p>
+      <a class="btn btn-primary hero__cta" href="pages/login.html">Register Today!</a>
+    </section>
+  </main>
+
+  <script src="js/utils/storage.js"></script>
+  <script src="js/utils/dom.js"></script>
+  <script src="js/api/client.js"></script>
+  <script src="js/api/auth.js"></script>
+  <script>
+    Naji.dom.loadNavbar("#navbar-mount");
+  </script>
+</body>
+</html>
