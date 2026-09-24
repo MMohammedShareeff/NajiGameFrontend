@@ -1,0 +1,26 @@
+.lobby-page {
+  padding: 64px 24px;
+}
+
+.lobby-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.lobby-card {
+  flex: 1 1 320px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lobby-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

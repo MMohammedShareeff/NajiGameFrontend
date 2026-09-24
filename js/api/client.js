@@ -37,6 +37,7 @@
 
   window.Naji = window.Naji || {};
   window.Naji.apiClient = {
+    baseUrl: API_BASE_URL,
     get: (path) => request(path),
     post: (path, body) => request(path, { method: "POST", body }),
     put: (path, body) => request(path, { method: "PUT", body }),

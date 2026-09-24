@@ -45,7 +45,7 @@
 
         <p v-if="loginError" class="form-error">{{ loginError }}</p>
 
-        <button type="submit" class="btn btn-primary auth-submit" :disabled="isSubmitting">
+        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
           {{ isSubmitting ? "Signing in..." : "Sign In" }}
         </button>
       </form>
@@ -70,7 +70,7 @@
 
         <p v-if="signupError" class="form-error">{{ signupError }}</p>
 
-        <button type="submit" class="btn btn-primary auth-submit" :disabled="isSubmitting">
+        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
           {{ isSubmitting ? "Creating account..." : "Register Today!" }}
         </button>
       </form>

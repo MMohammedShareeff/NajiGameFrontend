@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Game</title>
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/pages/game.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="container">
+    <div id="app">
+      <p v-if="loadError" class="form-error">{{ loadError }}</p>
+
+      <div v-else>
+        <div class="room-code-banner">
+          <span>Room Code:</span>
+          <strong>{{ roomPasscode }}</strong>
+          <button type="button" class="btn btn-primary room-code-banner__copy" @click="copyRoomCode">
+            {{ copied ? "Copied!" : "Copy" }}
+          </button>
+        </div>
+
+        <div class="game-layout">
+          <aside class="card game-panel game-panel--players">
+            <h2>Players</h2>
+            <ul class="player-list">
+              <li v-for="player in players" :key="player.id" class="player-list__item">
+                <span>{{ player.userName }}</span>
+                <button
+                  v-if="isAdmin && player.userName !== username"
+                  type="button"
+                  class="player-list__kick"
+                  :disabled="isKicking"
+                  @click="handleKick(player.userName)"
+                >Kick</button>
+              </li>
+            </ul>
+            <p v-if="kickError" class="form-error">{{ kickError }}</p>
+          </aside>
+
+          <section class="card game-panel game-panel--scenario">
+            <div class="scenario-header">
+              <h2>Scenario</h2>
+              <span v-if="roundNumber" class="round-chip">Round {{ roundNumber }} / {{ totalRounds }}</span>
+            </div>
+
+            <div
+              v-if="roundNumber && gameRunning"
+              class="round-timer"
+              :class="{ 'round-timer--low': secondsLeft > 0 && secondsLeft <= 10 }"
+            >
+              <div class="round-timer__track">
+                <div class="round-timer__bar" :style="{ width: timerPercent + '%' }"></div>
+              </div>
+              <span class="round-timer__label">{{ timerLabel }}</span>
+            </div>
+
+            <p v-if="updatesBanner" class="game-banner">{{ updatesBanner }}</p>
+
+            <button
+              v-if="isAdmin && !gameRunning"
+              type="button"
+              class="btn btn-primary"
+              :disabled="isStarting"
+              @click="handleStartGame"
+            >{{ isStarting ? "Starting..." : "Start Game" }}</button>
+            <p v-if="startError && !finalPopupOpen" class="form-error">{{ startError }}</p>
+
+            <p class="game-scenario">{{ scenario }}</p>
+
+            <form class="game-answer-form" @submit.prevent="handleSubmit">
+              <textarea
+                class="game-answer"
+                v-model="answerText"
+                placeholder="Type how you'd survive..."
+                :disabled="hasSubmitted || isSubmitting"
+              ></textarea>
+
+              <p v-if="submitError" class="form-error">{{ submitError }}</p>
+              <p v-if="hasSubmitted" class="form-success">Answer sent. Waiting for other players...</p>
+
+              <button type="submit" class="btn btn-primary" :disabled="hasSubmitted || isSubmitting">
+                {{ isSubmitting ? "Sending..." : "Send" }}
+              </button>
+            </form>
+          </section>
+
+          <aside class="card game-panel game-panel--leaderboard">
+            <h2>Leaderboard</h2>
+            <p v-if="!leaderboardPlayers.length && !isRevealing" class="text-muted">No scores yet.</p>
+            <transition-group name="reveal" tag="div" class="leaderboard-cards">
+              <div v-for="player in leaderboardPlayers" :key="player.userName" class="leaderboard-card">
+                <div class="leaderboard-card__name">{{ player.userName }}</div>
+                <div class="leaderboard-card__scores">Rounds: {{ player.scores.join(", ") || "-" }}</div>
+                <div class="leaderboard-card__total">{{ player.total }}</div>
+              </div>
+            </transition-group>
+          </aside>
+        </div>
+
+        <div v-if="resultsOverlayOpen" class="modal-backdrop">
+          <div class="results-stage">
+            <div class="results-stage__header">
+              <h2>Round {{ resultsRound }} of {{ totalRounds }} results</h2>
+              <p>{{ isRevealingResults ? "The comedian is judging..." : "The comedian has spoken." }}</p>
+            </div>
+
+            <transition-group name="reveal" tag="div" class="results-cards">
+              <article v-for="card in resultCards" :key="card.playerName" class="card result-card">
+                <div class="result-card__head">
+                  <strong>{{ card.playerName }}</strong>
+                  <span class="result-card__answer">{{ shortAnswer(card.answer) }}</span>
+                </div>
+
+                <p class="result-card__commentary">{{ card.shownCommentary }}<span v-if="!card.verdictVisible" class="typing-caret"></span></p>
+
+                <transition name="verdict">
+                  <div
+                    v-if="card.verdictVisible"
+                    class="verdict"
+                    :class="card.survived ? 'verdict--survived' : 'verdict--dead'"
+                  >
+                    <span class="verdict__label">{{ card.survived ? "SURVIVED" : "NOT SURVIVED" }}</span>
+                    <span class="verdict__score">{{ card.score }}/10</span>
+                  </div>
+                </transition>
+              </article>
+            </transition-group>
+
+            <div class="results-stage__footer">
+              <button v-if="isRevealingResults" type="button" class="btn btn-secondary-dark" @click="skipReveal">Skip</button>
+              <button v-else type="button" class="btn btn-primary" @click="resultsOverlayOpen = false">Continue</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="finalPopupOpen" class="modal-backdrop modal-backdrop--centered">
+          <div class="card final-popup">
+            <h2>Game over</h2>
+            <p class="final-popup__winner gradient-text">{{ finalWinnerText }}</p>
+
+            <ol class="final-popup__standings">
+              <li v-for="(standing, index) in finalStandings" :key="standing.userName" class="final-popup__row">
+                <span class="final-popup__rank">{{ index + 1 }}</span>
+                <span class="final-popup__name">{{ standing.userName }}</span>
+                <span class="final-popup__rounds">{{ standing.scores.join(" + ") }}</span>
+                <span class="final-popup__total">{{ standing.total }}</span>
+              </li>
+            </ol>
+
+            <p v-if="startError" class="form-error">{{ startError }}</p>
+
+            <div class="final-popup__actions">
+              <button
+                v-if="isAdmin"
+                type="button"
+                class="btn btn-primary"
+                :disabled="isStarting"
+                @click="handleStartGame"
+              >{{ isStarting ? "Starting..." : "Play again" }}</button>
+              <p v-else class="text-muted">Waiting for the host to start another game...</p>
+              <button type="button" class="btn btn-secondary" @click="goToLobby">Back to lobby</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/dom.js"></script>
+  <script src="../js/api/client.js"></script>
+  <script src="../js/api/auth.js"></script>
+  <script src="../js/utils/auth-guard.js"></script>
+  <script src="../js/api/room.js"></script>
+  <script src="../js/api/game.js"></script>
+  <script src="../js/ws/socket.js"></script>
+  <script>
+    const TYPING_INTERVAL_MS = 20;
+    const VERDICT_PAUSE_MS = 1500;
+    const MAX_ANSWER_PREVIEW = 140;
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    if (Naji.authGuard.requireAuth()) {
+      Naji.dom.loadNavbar("#navbar-mount");
+
+      const { createApp } = Vue;
+
+      const app = createApp({
+        data() {
+          return {
+            players: [],
+            scenario: "Waiting for the round to start...",
+            leaderboardPlayers: [],
+            isRevealing: false,
+            loadError: "",
+            answerText: "",
+            isSubmitting: false,
+            hasSubmitted: false,
+            submitError: "",
+            username: Naji.storage.getUsername(),
+            isAdmin: false,
+            isStarting: false,
+            startError: "",
+            isKicking: false,
+            kickError: "",
+            updatesBanner: "",
+            roomPasscode: "",
+            copied: false,
+            gameRunning: false,
+            resultsOverlayOpen: false,
+            resultsRound: 0,
+            currentResults: [],
+            resultCards: [],
+            isRevealingResults: false,
+            revealToken: 0,
+            pendingLeaderboardText: "",
+            finalPopupOpen: false,
+            finalStandings: [],
+            finalWinners: [],
+            roundNumber: 0,
+            totalRounds: 0,
+            secondsLeft: 0,
+            secondsTotal: 0,
+            countdownTimerId: null,
+            roundPhase: ""
+          };
+        },
+        computed: {
+          timerPercent() {
+            return this.secondsTotal ? (this.secondsLeft / this.secondsTotal) * 100 : 0;
+          },
+          timerLabel() {
+            if (this.roundPhase === "judged") {
+              return "Round over";
+            }
+            if (this.secondsLeft <= 0) {
+              return "Time's up, judging...";
+            }
+            const minutes = Math.floor(this.secondsLeft / 60);
+            const seconds = String(this.secondsLeft % 60).padStart(2, "0");
+            return `${minutes}:${seconds}`;
+          },
+          finalWinnerText() {
+            if (this.finalWinners.length === 1) {
+              return `${this.finalWinners[0]} wins the game!`;
+            }
+            return `It's a draw between ${this.finalWinners.join(" and ")}!`;
+          }
+        },
+        async mounted() {
+          const passCode = Naji.storage.getRoomPasscode();
+          if (!passCode) {
+            this.loadError = "No active room found. Return to the lobby to join or create one.";
+            return;
+          }
+          this.roomPasscode = passCode;
+
+          try {
+            this.players = await Naji.room.getPlayersInRoom(passCode);
+            const admin = await Naji.room.getRoomAdmin(passCode);
+            this.isAdmin = admin.userName === this.username;
+
+            const roomId = await Naji.apiClient.get(`/room/room-id?passCode=${encodeURIComponent(passCode)}`);
+
+            await Naji.socket.connect(Naji.storage.getToken());
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/round`, (body) => {
+              const round = JSON.parse(body);
+              this.revealToken++;
+              this.resultsOverlayOpen = false;
+              this.isRevealingResults = false;
+              this.flushPendingLeaderboard();
+              this.scenario = round.scenario;
+              this.roundNumber = round.round;
+              this.totalRounds = round.totalRounds;
+              this.roundPhase = "answering";
+              this.startCountdown(round.seconds);
+              this.answerText = "";
+              this.hasSubmitted = false;
+              this.submitError = "";
+              this.gameRunning = true;
+            });
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/results`, (body) => {
+              this.playRoundResults(JSON.parse(body));
+            });
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/leaderboard`, (body) => {
+              if (this.isRevealingResults) {
+                this.pendingLeaderboardText = body;
+              } else {
+                this.revealLeaderboard(body);
+              }
+            });
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/final_leaderboard`, (body) => {
+              this.showFinalResults(body);
+            });
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/updates`, (body) => {
+              this.handleUpdate(body);
+            });
+          } catch (error) {
+            this.loadError = error.message || "Unable to load the room.";
+          }
+        },
+        beforeUnmount() {
+          this.stopCountdown();
+          Naji.socket.disconnect();
+        },
+        methods: {
+          async handleSubmit() {
+            this.submitError = "";
+
+            if (!this.answerText.trim()) {
+              this.submitError = "Please write an answer before sending.";
+              return;
+            }
+
+            this.isSubmitting = true;
+            try {
+              await Naji.game.submitAnswer(this.answerText.trim());
+              this.hasSubmitted = true;
+            } catch (error) {
+              this.submitError = error.message || "Unable to submit your answer.";
+            } finally {
+              this.isSubmitting = false;
+            }
+          },
+          async handleStartGame() {
+            this.startError = "";
+            this.isStarting = true;
+            try {
+              await Naji.game.startGame(Naji.storage.getRoomPasscode());
+            } catch (error) {
+              this.startError = error.message || "Unable to start the game.";
+            } finally {
+              this.isStarting = false;
+            }
+          },
+          async handleKick(playerName) {
+            this.kickError = "";
+            this.isKicking = true;
+            try {
+              await Naji.room.kickPlayer(Naji.storage.getRoomPasscode(), playerName);
+              this.players = this.players.filter((player) => player.userName !== playerName);
+            } catch (error) {
+              this.kickError = error.message || "Unable to kick that player.";
+            } finally {
+              this.isKicking = false;
+            }
+          },
+          copyRoomCode() {
+            navigator.clipboard.writeText(this.roomPasscode).then(() => {
+              this.copied = true;
+              setTimeout(() => {
+                this.copied = false;
+              }, 1500);
+            });
+          },
+          goToLobby() {
+            window.location.href = "/pages/lobby.html";
+          },
+          startCountdown(seconds) {
+            this.stopCountdown();
+            this.secondsTotal = seconds;
+            this.secondsLeft = seconds;
+            this.countdownTimerId = setInterval(() => {
+              this.secondsLeft = Math.max(0, this.secondsLeft - 1);
+              if (this.secondsLeft === 0) {
+                this.stopCountdown();
+              }
+            }, 1000);
+          },
+          stopCountdown() {
+            if (this.countdownTimerId) {
+              clearInterval(this.countdownTimerId);
+              this.countdownTimerId = null;
+            }
+          },
+          handleUpdate(message) {
+            if (message === "The game has started") {
+              this.stopCountdown();
+              this.roundNumber = 0;
+              this.roundPhase = "";
+              this.gameRunning = true;
+              this.finalPopupOpen = false;
+              this.resultsOverlayOpen = false;
+              this.leaderboardPlayers = [];
+              this.updatesBanner = "";
+              this.startError = "";
+              this.answerText = "";
+              this.hasSubmitted = false;
+              this.scenario = "Get ready, the first scenario is coming...";
+              return;
+            }
+
+            if (message === "The game is over.") {
+              this.stopCountdown();
+              this.gameRunning = false;
+              return;
+            }
+
+            if (message.startsWith("The game was stopped")) {
+              this.stopCountdown();
+              this.gameRunning = false;
+              this.revealToken++;
+              this.resultsOverlayOpen = false;
+              this.isRevealingResults = false;
+            }
+            this.updatesBanner = message;
+          },
+          shortAnswer(answer) {
+            if (!answer) {
+              return "No answer";
+            }
+            return answer.length > MAX_ANSWER_PREVIEW ? `"${answer.slice(0, MAX_ANSWER_PREVIEW)}..."` : `"${answer}"`;
+          },
+          async playRoundResults(message) {
+            const token = ++this.revealToken;
+            this.stopCountdown();
+            this.secondsLeft = 0;
+            this.roundPhase = "judged";
+            this.currentResults = message.results;
+            this.resultsRound = message.round;
+            this.resultCards = [];
+            this.resultsOverlayOpen = true;
+            this.isRevealingResults = true;
+
+            for (const result of message.results) {
+              if (token !== this.revealToken) {
+                return;
+              }
+
+              this.resultCards.push({ ...result, shownCommentary: "", verdictVisible: false });
+              const card = this.resultCards[this.resultCards.length - 1];
+
+              for (let length = 1; length <= result.commentary.length; length++) {
+                if (token !== this.revealToken) {
+                  return;
+                }
+                card.shownCommentary = result.commentary.slice(0, length);
+                await sleep(TYPING_INTERVAL_MS);
+              }
+
+              card.verdictVisible = true;
+              await sleep(VERDICT_PAUSE_MS);
+            }
+
+            if (token === this.revealToken) {
+              this.isRevealingResults = false;
+              this.flushPendingLeaderboard();
+            }
+          },
+          skipReveal() {
+            this.revealToken++;
+            this.resultCards = this.currentResults.map((result) => ({
+              ...result,
+              shownCommentary: result.commentary,
+              verdictVisible: true
+            }));
+            this.isRevealingResults = false;
+            this.flushPendingLeaderboard();
+          },
+          flushPendingLeaderboard() {
+            if (this.pendingLeaderboardText) {
+              const text = this.pendingLeaderboardText;
+              this.pendingLeaderboardText = "";
+              this.revealLeaderboard(text);
+            }
+          },
+          parseLeaderboard(text) {
+            const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+            const parsedPlayers = [];
+            let current = null;
+
+            for (const line of lines) {
+              if (line.startsWith("Player:")) {
+                current = { userName: line.replace("Player:", "").trim(), scores: [], total: 0 };
+                parsedPlayers.push(current);
+              } else if (line.startsWith("rounds scores:") && current) {
+                const match = line.match(/\[(.*)\]/);
+                current.scores = match
+                  ? match[1].split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n))
+                  : [];
+              } else if (line.startsWith("- Total Score:") && current) {
+                current.total = Number(line.replace("- Total Score:", "").trim());
+              }
+            }
+
+            return parsedPlayers.sort((a, b) => b.total - a.total);
+          },
+          async revealLeaderboard(text) {
+            const parsedPlayers = this.parseLeaderboard(text);
+            this.leaderboardPlayers = [];
+            this.isRevealing = true;
+
+            for (const player of parsedPlayers) {
+              await sleep(300);
+              this.leaderboardPlayers.push(player);
+            }
+
+            this.isRevealing = false;
+          },
+          showFinalResults(text) {
+            this.stopCountdown();
+            this.revealToken++;
+            this.resultsOverlayOpen = false;
+            this.isRevealingResults = false;
+            this.flushPendingLeaderboard();
+
+            const standings = this.parseLeaderboard(text);
+            const topScore = standings.length ? standings[0].total : 0;
+            this.finalStandings = standings;
+            this.finalWinners = standings.filter((standing) => standing.total === topScore).map((standing) => standing.userName);
+            this.startError = "";
+            this.finalPopupOpen = true;
+          }
+        }
+      });
+
+      app.mount("#app");
+    }
+  </script>
+</body>
+</html>

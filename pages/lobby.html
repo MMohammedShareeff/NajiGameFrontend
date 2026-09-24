@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Lobby</title>
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/pages/lobby.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="container lobby-page">
+    <div id="app" class="lobby-grid">
+      <section class="card lobby-card">
+        <h2>Join a Room</h2>
+        <form class="lobby-form" @submit.prevent="handleJoin">
+          <label class="form-field">
+            <span>Room Code</span>
+            <input type="text" v-model.trim="joinCode" placeholder="Room-ABC123" />
+          </label>
+
+          <p v-if="joinError" class="form-error">{{ joinError }}</p>
+
+          <button type="submit" class="btn btn-primary" :disabled="isJoining">
+            {{ isJoining ? "Joining..." : "Join" }}
+          </button>
+        </form>
+      </section>
+
+      <section class="card lobby-card">
+        <h2>Create a Room</h2>
+        <p class="text-muted">Start a new room and share the code with up to four friends.</p>
+
+        <p v-if="createError" class="form-error">{{ createError }}</p>
+
+        <button type="button" class="btn btn-primary" :disabled="isCreating" @click="handleCreate">
+          {{ isCreating ? "Creating..." : "Create Room" }}
+        </button>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/dom.js"></script>
+  <script src="../js/api/client.js"></script>
+  <script src="../js/api/auth.js"></script>
+  <script src="../js/utils/auth-guard.js"></script>
+  <script src="../js/api/room.js"></script>
+  <script src="../js/ws/socket.js"></script>
+  <script>
+    if (Naji.authGuard.requireAuth()) {
+      Naji.dom.loadNavbar("#navbar-mount");
+
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            joinCode: "",
+            joinError: "",
+            isJoining: false,
+            createError: "",
+            isCreating: false
+          };
+        },
+        methods: {
+          async handleJoin() {
+            this.joinError = "";
+
+            if (!this.joinCode) {
+              this.joinError = "Please enter a room code.";
+              return;
+            }
+
+            this.isJoining = true;
+            try {
+              await Naji.room.joinRoom(this.joinCode);
+              window.location.href = "/pages/game.html";
+            } catch (error) {
+              this.joinError = error.message || "Unable to join that room.";
+            } finally {
+              this.isJoining = false;
+            }
+          },
+          async handleCreate() {
+            this.createError = "";
+            this.isCreating = true;
+            try {
+              await Naji.room.createRoom();
+              window.location.href = "/pages/game.html";
+            } catch (error) {
+              this.createError = error.message || "Unable to create a room.";
+            } finally {
+              this.isCreating = false;
+            }
+          }
+        }
+      }).mount("#app");
+    }
+  </script>
+</body>
+</html>
