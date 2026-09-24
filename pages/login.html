@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Sign In</title>
-  <link rel="stylesheet" href="../css/base.css?v=20260924b" />
-  <link rel="stylesheet" href="../css/components.css?v=20260924b" />
-  <link rel="stylesheet" href="../css/pages/login.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/base.css?v=20260924e" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924e" />
+  <link rel="stylesheet" href="../css/pages/login.css?v=20260924e" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
@@ -14,7 +14,7 @@
 
   <main class="container auth-page">
     <div id="app" class="card auth-card">
-      <div class="auth-tabs">
+      <div v-if="!pendingSignup" class="auth-tabs">
         <button
           type="button"
           class="auth-tabs__btn"
@@ -29,7 +29,28 @@
         >Sign Up</button>
       </div>
 
-      <form v-if="activeTab === 'login'" class="auth-form" @submit.prevent="handleLogin">
+      <form v-if="pendingSignup" class="auth-form" @submit.prevent="handleVerifyEmail">
+        <h2>Verify your email</h2>
+        <p class="text-muted">
+          We sent a verification code to <strong>{{ pendingSignup.email }}</strong>. It expires in 5 minutes.
+          The code is case-sensitive.
+        </p>
+
+        <label class="form-field">
+          <span>Verification code</span>
+          <input type="text" v-model.trim="signupCode" autocomplete="one-time-code" autofocus />
+        </label>
+
+        <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isVerifying }" :disabled="isVerifying || isResending">
+          {{ isVerifying ? "Verifying..." : "Verify and finish" }}
+        </button>
+        <button type="button" class="btn btn-secondary" :class="{ 'is-loading': isResending }" :disabled="isVerifying || isResending" @click="resendCode">
+          {{ isResending ? "Sending..." : "Send a new code" }}
+        </button>
+        <a class="auth-form__link" href="#" @click.prevent="cancelVerification">Use a different email</a>
+      </form>
+
+      <form v-else-if="activeTab === 'login'" class="auth-form" @submit.prevent="handleLogin">
         <h2>Welcome back</h2>
 
         <label class="form-field">
@@ -76,26 +97,26 @@
         </button>
       </form>
 
-      <div class="auth-divider"><span>or</span></div>
+      <div v-if="!pendingSignup" class="auth-divider"><span>or</span></div>
 
-      <label class="form-field auth-guest__name">
+      <label v-if="!pendingSignup" class="form-field auth-guest__name">
         <span>Guest nickname (optional)</span>
         <input type="text" v-model.trim="guestName" maxlength="20" placeholder="Leave empty for a random name" autocomplete="off" @keyup.enter="handleGuest" />
       </label>
 
-      <button type="button" class="btn btn-secondary auth-guest" :class="{ 'is-loading': isGuestLoading }" :disabled="isSubmitting || isGuestLoading" @click="handleGuest">
+      <button v-if="!pendingSignup" type="button" class="btn btn-secondary auth-guest" :class="{ 'is-loading': isGuestLoading }" :disabled="isSubmitting || isGuestLoading" @click="handleGuest">
         {{ isGuestLoading ? "Setting up..." : "Play as guest" }}
       </button>
-      <p class="text-muted auth-guest__hint">Your nickname is how friends spot you in the room. No stats are kept.</p>
+      <p v-if="!pendingSignup" class="text-muted auth-guest__hint">Your nickname is how friends spot you in the room. No stats are kept.</p>
     </div>
   </main>
 
-  <script src="../js/utils/storage.js?v=20260924b"></script>
-  <script src="../js/utils/toast.js?v=20260924b"></script>
-  <script src="../js/utils/dom.js?v=20260924b"></script>
-  <script src="../js/api/client.js?v=20260924b"></script>
-  <script src="../js/api/auth.js?v=20260924b"></script>
-  <script src="../js/components/password-field.js?v=20260924b"></script>
+  <script src="../js/utils/storage.js?v=20260924e"></script>
+  <script src="../js/utils/toast.js?v=20260924e"></script>
+  <script src="../js/utils/dom.js?v=20260924e"></script>
+  <script src="../js/api/client.js?v=20260924e"></script>
+  <script src="../js/api/auth.js?v=20260924e"></script>
+  <script src="../js/components/password-field.js?v=20260924e"></script>
   <script>
     Naji.dom.loadNavbar("#navbar-mount");
 
@@ -107,6 +128,10 @@
           activeTab: "login",
           isSubmitting: false,
           isGuestLoading: false,
+          pendingSignup: null,
+          signupCode: "",
+          isVerifying: false,
+          isResending: false,
           guestName: "",
           loginForm: { userName: "", password: "" },
           signupForm: { userName: "", email: "", password: "", confirmPassword: "" }
@@ -160,6 +185,44 @@
             this.isSubmitting = false;
           }
         },
+        async handleVerifyEmail() {
+          if (!this.signupCode) {
+            Naji.toast.error("Please enter the verification code.");
+            return;
+          }
+
+          this.isVerifying = true;
+          try {
+            await Naji.auth.verifyEmail(this.pendingSignup.email, this.signupCode);
+            this.loginForm.userName = this.pendingSignup.userName;
+            this.pendingSignup = null;
+            this.signupCode = "";
+            this.signupForm = { userName: "", email: "", password: "", confirmPassword: "" };
+            this.activeTab = "login";
+            Naji.toast.success("Email verified. You can sign in now.");
+          } catch (error) {
+            Naji.toast.error(error.message || "Unable to verify that code.");
+          } finally {
+            this.isVerifying = false;
+          }
+        },
+        async resendCode() {
+          this.isResending = true;
+          try {
+            await Naji.auth.register(this.pendingSignup);
+            this.signupCode = "";
+            Naji.toast.success("A new code was sent. Older codes no longer work.");
+          } catch (error) {
+            Naji.toast.error(error.message || "Unable to send a new code.");
+          } finally {
+            this.isResending = false;
+          }
+        },
+        cancelVerification() {
+          this.pendingSignup = null;
+          this.signupCode = "";
+          this.activeTab = "signup";
+        },
         async handleSignup() {
           const { userName, email, password, confirmPassword } = this.signupForm;
           if (!userName || !email || !password || !confirmPassword) {
@@ -178,9 +241,9 @@
           this.isSubmitting = true;
           try {
             await Naji.auth.register({ userName, email, password });
-            Naji.toast.success("Account created. Check your email to verify before signing in.");
-            this.signupForm = { userName: "", email: "", password: "", confirmPassword: "" };
-            this.activeTab = "login";
+            this.pendingSignup = { userName, email, password };
+            this.signupCode = "";
+            Naji.toast.success("Verification code sent. Check your email.");
           } catch (error) {
             Naji.toast.error(error.message || "Unable to register.");
           } finally {

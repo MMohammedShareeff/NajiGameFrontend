@@ -1,5 +1,17 @@
 (function () {
   function navbarTemplate(isLoggedIn, hasRoom, isGuest) {
+    const invitesControl = isLoggedIn && !isGuest
+      ? `
+        <div class="invites">
+          <button type="button" class="invites__toggle" id="navbar-invites">
+            Invites
+            <span class="invites__badge" id="navbar-invites-badge" hidden>0</span>
+          </button>
+          <div class="invites__panel" id="navbar-invites-panel" hidden></div>
+        </div>
+      `
+      : "";
+
     const authAction = isLoggedIn
       ? '<button type="button" class="btn btn-danger" id="navbar-logout">Logout</button>'
       : '<a class="btn btn-primary" href="/pages/login.html">Sign In</a>';
@@ -32,6 +44,7 @@
           <li><a class="navbar__link" href="#">Contact</a></li>
         </ul>
         <div class="navbar__actions">
+          ${invitesControl}
           ${authAction}
         </div>
       </nav>
@@ -48,6 +61,10 @@
     const hasRoom = Boolean(window.Naji.storage.getRoomPasscode());
     const isGuest = isLoggedIn && window.Naji.storage.isGuest();
     mount.innerHTML = navbarTemplate(isLoggedIn, hasRoom, isGuest);
+
+    if (isLoggedIn && !isGuest && window.Naji.invites && window.Naji.invite) {
+      window.Naji.invites.init();
+    }
 
     if (isLoggedIn) {
       document.getElementById("navbar-logout").addEventListener("click", () => {

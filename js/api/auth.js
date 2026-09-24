@@ -18,6 +18,16 @@
     return token;
   }
 
+  function verifyEmail(email, code) {
+    const query = new URLSearchParams({
+      email,
+      verificationCode: code,
+      isUpdate: "false",
+      isPassReset: "false"
+    });
+    return window.Naji.apiClient.post(`/verification/verify-email?${query}`);
+  }
+
   function requestPasswordReset({ email, newPassword, newPasswordAgain }) {
     return window.Naji.apiClient.put("/player/reset-password", { email, newPassword, newPasswordAgain });
   }
@@ -33,5 +43,5 @@
   }
 
   window.Naji = window.Naji || {};
-  window.Naji.auth = { register, login, loginAsGuest, requestPasswordReset, verifyPasswordReset };
+  window.Naji.auth = { register, verifyEmail, login, loginAsGuest, requestPasswordReset, verifyPasswordReset };
 })();

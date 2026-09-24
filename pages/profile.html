@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Profile</title>
-  <link rel="stylesheet" href="../css/base.css?v=20260924b" />
-  <link rel="stylesheet" href="../css/components.css?v=20260924b" />
-  <link rel="stylesheet" href="../css/pages/profile.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/base.css?v=20260924e" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924e" />
+  <link rel="stylesheet" href="../css/pages/profile.css?v=20260924e" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
@@ -109,14 +109,16 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js?v=20260924b"></script>
-  <script src="../js/utils/toast.js?v=20260924b"></script>
-  <script src="../js/utils/dom.js?v=20260924b"></script>
-  <script src="../js/api/client.js?v=20260924b"></script>
-  <script src="../js/api/auth.js?v=20260924b"></script>
-  <script src="../js/utils/auth-guard.js?v=20260924b"></script>
-  <script src="../js/api/profile.js?v=20260924b"></script>
-  <script src="../js/components/password-field.js?v=20260924b"></script>
+  <script src="../js/utils/storage.js?v=20260924e"></script>
+  <script src="../js/utils/toast.js?v=20260924e"></script>
+  <script src="../js/utils/dom.js?v=20260924e"></script>
+  <script src="../js/api/client.js?v=20260924e"></script>
+  <script src="../js/api/invite.js?v=20260924e"></script>
+  <script src="../js/utils/invites.js?v=20260924e"></script>
+  <script src="../js/api/auth.js?v=20260924e"></script>
+  <script src="../js/utils/auth-guard.js?v=20260924e"></script>
+  <script src="../js/api/profile.js?v=20260924e"></script>
+  <script src="../js/components/password-field.js?v=20260924e"></script>
   <script>
     if (Naji.authGuard.requireAccount()) {
       Naji.dom.loadNavbar("#navbar-mount");

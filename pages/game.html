@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Game</title>
-  <link rel="stylesheet" href="../css/base.css?v=20260924b" />
-  <link rel="stylesheet" href="../css/components.css?v=20260924b" />
-  <link rel="stylesheet" href="../css/pages/game.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/base.css?v=20260924e" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924e" />
+  <link rel="stylesheet" href="../css/pages/game.css?v=20260924e" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
@@ -50,6 +50,16 @@
                 >Kick</button>
               </li>
             </ul>
+
+            <form v-if="canInvite" class="invite-form" @submit.prevent="handleInvite">
+              <label class="form-field">
+                <span>Invite a friend</span>
+                <input type="text" v-model.trim="inviteName" placeholder="Their username" maxlength="30" autocomplete="off" />
+              </label>
+              <button type="submit" class="btn btn-secondary" :class="{ 'is-loading': isInviting }" :disabled="isInviting">
+                {{ isInviting ? "Sending..." : "Send invite" }}
+              </button>
+            </form>
 
             <div class="leave-room">
               <button type="button" class="btn btn-secondary" @click="confirmDialog = 'leave'">Leave room</button>
@@ -239,19 +249,22 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js?v=20260924b"></script>
-  <script src="../js/utils/toast.js?v=20260924b"></script>
-  <script src="../js/utils/dom.js?v=20260924b"></script>
-  <script src="../js/api/client.js?v=20260924b"></script>
-  <script src="../js/api/auth.js?v=20260924b"></script>
-  <script src="../js/utils/auth-guard.js?v=20260924b"></script>
-  <script src="../js/api/room.js?v=20260924b"></script>
-  <script src="../js/api/game.js?v=20260924b"></script>
-  <script src="../js/ws/socket.js?v=20260924b"></script>
+  <script src="../js/utils/storage.js?v=20260924e"></script>
+  <script src="../js/utils/toast.js?v=20260924e"></script>
+  <script src="../js/utils/dom.js?v=20260924e"></script>
+  <script src="../js/api/client.js?v=20260924e"></script>
+  <script src="../js/api/invite.js?v=20260924e"></script>
+  <script src="../js/utils/invites.js?v=20260924e"></script>
+  <script src="../js/api/auth.js?v=20260924e"></script>
+  <script src="../js/utils/auth-guard.js?v=20260924e"></script>
+  <script src="../js/api/room.js?v=20260924e"></script>
+  <script src="../js/api/game.js?v=20260924e"></script>
+  <script src="../js/ws/socket.js?v=20260924e"></script>
   <script>
     const TYPING_INTERVAL_MS = 20;
     const VERDICT_PAUSE_MS = 1500;
     const MAX_ANSWER_PREVIEW = 140;
+    const MAX_PLAYERS = 5;
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     if (Naji.authGuard.requireAuth()) {
@@ -278,6 +291,9 @@
             isStarting: false,
             isKicking: false,
             ready: false,
+            inviteName: "",
+            isInviting: false,
+            isGuestPlayer: Naji.storage.isGuest(),
             confirmDialog: null,
             isEnding: false,
             isLeaving: false,
@@ -307,6 +323,9 @@
         computed: {
           showBoard() {
             return this.gameRunning || this.finalPopupOpen;
+          },
+          canInvite() {
+            return !this.isGuestPlayer && !this.gameRunning && this.players.length < MAX_PLAYERS;
           },
           submissionRows() {
             return this.submissions.map((submission, index) => ({
@@ -481,6 +500,23 @@
               Naji.toast.error(error.message || "Unable to start the game.");
             } finally {
               this.isStarting = false;
+            }
+          },
+          async handleInvite() {
+            if (!this.inviteName) {
+              Naji.toast.error("Type the username of the player you want to invite.");
+              return;
+            }
+
+            this.isInviting = true;
+            try {
+              const message = await Naji.invite.send(this.roomPasscode, this.inviteName);
+              Naji.toast.success(message);
+              this.inviteName = "";
+            } catch (error) {
+              Naji.toast.error(error.message || "Unable to send that invite.");
+            } finally {
+              this.isInviting = false;
             }
           },
           async handleEndGame() {

@@ -4,7 +4,7 @@ Stack: **Vue 3 via CDN** (no build step), plain CSS, native `fetch`, STOMP over 
 Work top to bottom — each ticket produces something you can open in a browser and click through before moving to the next.
 
 
-#Note that i do not need you to write comments anywhere in the code unless i said the opposite.
+Note: no comments anywhere in the code unless asked otherwise.
 ---
 
 ## FE-0: Project scaffold + design system
@@ -41,7 +41,7 @@ Work top to bottom — each ticket produces something you can open in a browser 
 ## FE-2: Home / Landing page
 **Goal:** the page in your first screenshot, fully static.
 
-- Hero section: NAJI logo art (placeholder image is fine for now), headline, description, "Register Today!" button linking to the auth page.
+- Hero section: NAJI logo art (placeholder image is fine for now), headline, description, "Play Now" button linking to the lobby (which sends signed-out visitors to sign in).
 - Navbar from FE-0, reused via a small include pattern (a `loadNavbar()` JS helper that injects the same HTML into every page, since there's no build step for real components yet).
 
 **Done when:** the landing page matches the theme and the button navigates to `pages/login.html`.
@@ -159,23 +159,82 @@ Work top to bottom — each ticket produces something you can open in a browser 
 
 ---
 
-## FE-13: Guest mode
-**Goal:** play without creating an account, using temporary local state instead of a real login.
+## FE-13: Guest mode  (DONE)
+**Goal:** play without creating an account.
 
-- **Needs scoping before implementation** — the backend currently has no concept of a guest/anonymous player. Room joining, submissions, and the leaderboard all key off a real authenticated `Player` row with a DB id. Guest mode needs either real backend support for ephemeral players, or a frontend-only illusion (silently auto-registering a throwaway account behind the scenes). Don't assume either approach — this needs a design decision when picked up, not a guess.
-- Once scoped: a "Play as Guest" entry point on the auth page, storing a temporary display name client-side, skipping the login form for casual play.
-
-**Done when:** TBD, pending the scoping decision above.
+- Backend: `POST /player/guest?name=` creates a throwaway player (optional nickname, random `Guest-NNNN` otherwise, suffix added if the name is taken) and returns a JWT carrying `guest: true`.
+- Guests can create and join rooms and play; they can't edit an account, and Dashboard/Profile are hidden and guarded for them.
+- "Play as guest" with an optional nickname on the login page.
 
 ---
 
-## FE-14: Player-to-player game invites
-**Goal:** logged-in players can invite each other to a room directly on the platform, instead of only sharing a room code out-of-band.
+## FE-14: Player-to-player game invites  (DONE)
+- Backend: `InviteController` / `InviteService` (Redis, 10 minute expiry): send, list mine, accept, decline; a private `/user/queue/invites` push per player.
+- Rules: only registered players send or receive invites; the sender must be in the room; no duplicates, self-invites, full or closed rooms; accepting while still in another room is refused.
+- Frontend: "Send invite" box in the game page player panel (registered players, before a game starts); navbar "Invites" button with a live badge and Accept/Decline panel on every page; a toast on arrival; a confirmation popup when accepting while already in another room.
 
-- **Needs scoping before implementation** — this is entirely new backend surface, not just a frontend gap. Nothing in the current API supports looking up other players to invite, sending/receiving an invite, or notifying someone in real time that they've been invited. At minimum this needs: a way to find another player (by username/email — decide what's searchable and what isn't), an invite/notification data model, REST endpoints to send/accept/decline, and likely a new WebSocket topic (per-player, not per-room like everything else so far) to deliver the invite live.
-- Depends on **FE-12** existing first (need a real profile identity to invite *to*) and probably benefits from a notification-center-style UI element, not just a modal.
+---
 
-**Done when:** TBD, pending backend scoping above.
+## FE-15: Room lifecycle and game continuity  (DONE)
+**Goal:** rooms and games behave sensibly when people join, leave, refresh or walk away.
+
+- Live players list over `/topic/room/{id}/players` (join, kick, leave, host change) with toasts; kicked players are told.
+- Leave room (host role passes on, last player closes the room), End game (closes the room for everyone), both behind a confirmation popup; kick bug fixed.
+- `GET /game/state` restores round, timer, submitted state, results overlay, final popup and leaderboard after a refresh or a trip to another tab; unsent answer drafts survive in session storage.
+- Live "Answers in" panel with per-player submit times (`/topic/room/{id}/submissions`).
+- "Already in a room" popup in the lobby when creating or joining another room.
+- Board hidden until the host starts the game; final popup offers Play again / Leave room.
+
+---
+
+## FE-16: Account security and forms  (DONE)
+- Show/hide password, caps-lock warning, live rule checklist, confirm-password on sign up, profile and reset.
+- Forgot-password page (`PUT /player/reset-password` fixed on the backend).
+- Profile changes send a code to the current email; changing the email also needs a second code sent to the new address (`POST /verification/verify-update`). Codes are case-sensitive and single-use.
+
+---
+
+## FE-17: Multiple simultaneous games  (DONE, backend)
+- `GameService` is now a single shared bean. Per-room state (running flag, round state, submissions, results, timers) is keyed by room id; nothing per-room lives in instance fields any more.
+- One scheduler pool (8 threads) serves all rooms, and a per-room lock stops a timer and an early finish from judging the same round twice.
+- Verified with two rooms playing all 5 rounds at once: each room got only its own results, leaderboard and final standings.
+
+---
+
+## FE-18: Guest account cleanup  (DONE, backend)
+- New `player.created_at` column (migration V6) and an hourly `GuestCleanupJob`.
+- Deletes guests older than `GUEST_RETENTION_HOURS` (default 48, longer than the 24 hour token life) that are not in any room and not a room admin, along with their submissions, scores and dashboard rows. Registered players are never touched.
+- Schedule and retention are configurable with `GUEST_CLEANUP_CRON` and `GUEST_RETENTION_HOURS`.
+- Verified against a database with 29 guests (all backdated): 21 purged, the 8 still in rooms kept, registered players untouched.
+
+---
+
+## FE-19: AI rating calibration  (TODO)
+- Ratings run low for silly or short answers. Play-test with real rooms and tune the scoring prompt.
+- Consider making the survive threshold and prompt tone configurable.
+- Model names on free tiers get deprecated; move the model name to an environment variable with a clear startup log if the provider rejects it.
+
+---
+
+## FE-20: Email delivery for development  (DONE)
+- `docker-compose.mail.yaml` adds a Mailpit container (web inbox on http://localhost:8025, SMTP on 1025) and points the app at it. Start it with `docker compose -f docker-compose.yaml -f docker-compose.mail.yaml up -d --build app mailpit`; leave the override out to use the real SMTP settings again.
+- Fixed a real bug found on the way: the sender was the invalid address `najiGame`, which strict SMTP servers reject. It is now `SPRING_MAIL_USERNAME` (or `NAJI_MAIL_FROM`, or `noreply@naji.local`).
+- Verified: register, code email, verify and login; password reset email; all landing in Mailpit.
+
+---
+
+## FE-21: Backend hardening  (MOSTLY DONE)
+Done:
+- Only register, login, guest, reset-password, verify-email and health/swagger are public; all else needs a token.
+- `POST /room/add-player` joins as the caller (no `userName` parameter).
+- Dashboards and account deletion are owner-only; kick/start/stop role rules now actually apply (the `/room/**` permit-all that shadowed them is gone).
+- Login lockout (10 failures, 10 minutes) and verification-code attempt limit (5 tries).
+
+Still open:
+- Membership check on `/room/get-players`, `/room/admin`, `/room/room-id` (any signed-in user with a room code can read them).
+- `GET /player/all` and `GET /player/{id}` are open to any signed-in user.
+- `GET /Submission/by-id/{id}` has inverted logic (present returns 204) and no ownership check; unused by the frontend.
+- Rate limiting for register, reset-password and guest creation.
 
 ---
 

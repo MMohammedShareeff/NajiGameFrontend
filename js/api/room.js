@@ -16,11 +16,8 @@
   }
 
   async function joinRoom(passCode) {
-    const userName = window.Naji.storage.getUsername();
     try {
-      await window.Naji.apiClient.post(
-        `/room/add-player?passCode=${encodeURIComponent(passCode)}&userName=${encodeURIComponent(userName)}`
-      );
+      await window.Naji.apiClient.post(`/room/add-player?passCode=${encodeURIComponent(passCode)}`);
     } catch (error) {
       if (error.message !== "Player is already in this room") {
         throw error;
