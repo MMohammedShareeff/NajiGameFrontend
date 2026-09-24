@@ -33,6 +33,10 @@
     return readTokenPayload()?.playerId ?? null;
   }
 
+  function isGuest() {
+    return readTokenPayload()?.guest === true;
+  }
+
   function hasValidSession() {
     const payload = readTokenPayload();
     return Boolean(payload) && (!payload.exp || payload.exp * 1000 > Date.now());
@@ -72,7 +76,9 @@
     saveToken,
     getToken,
     clearToken,
+    readTokenPayload,
     getPlayerId,
+    isGuest,
     hasValidSession,
     clearSession,
     saveRoomPasscode,

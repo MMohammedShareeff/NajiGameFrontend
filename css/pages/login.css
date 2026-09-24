@@ -39,6 +39,53 @@
   gap: 16px;
 }
 
+.auth-form p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.auth-form__link {
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d7d70;
+}
+
+.auth-form__link:hover {
+  text-decoration: underline;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.auth-guest__name {
+  margin-bottom: 12px;
+}
+
+.auth-guest {
+  width: 100%;
+}
+
+.auth-guest__hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  text-align: center;
+}
+
 .auth-form h2 {
   font-family: var(--font-body);
   font-size: 20px;

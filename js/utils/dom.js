@@ -1,5 +1,5 @@
 (function () {
-  function navbarTemplate(isLoggedIn, hasRoom) {
+  function navbarTemplate(isLoggedIn, hasRoom, isGuest) {
     const authAction = isLoggedIn
       ? '<button type="button" class="btn btn-danger" id="navbar-logout">Logout</button>'
       : '<a class="btn btn-primary" href="/pages/login.html">Sign In</a>';
@@ -8,12 +8,18 @@
       ? '<li><a class="navbar__link" href="/pages/game.html">Room</a></li>'
       : "";
 
+    const accountLinks = isGuest
+      ? ""
+      : `
+        <li><a class="navbar__link" href="/pages/dashboard.html">Dashboard</a></li>
+        <li><a class="navbar__link" href="/pages/profile.html">Profile</a></li>
+      `;
+
     const protectedLinks = isLoggedIn
       ? `
         <li><a class="navbar__link" href="/pages/lobby.html">Lobby</a></li>
         ${roomLink}
-        <li><a class="navbar__link" href="/pages/dashboard.html">Dashboard</a></li>
-        <li><a class="navbar__link" href="/pages/profile.html">Profile</a></li>
+        ${accountLinks}
       `
       : "";
 
@@ -40,7 +46,8 @@
 
     const isLoggedIn = window.Naji.storage.hasValidSession();
     const hasRoom = Boolean(window.Naji.storage.getRoomPasscode());
-    mount.innerHTML = navbarTemplate(isLoggedIn, hasRoom);
+    const isGuest = isLoggedIn && window.Naji.storage.isGuest();
+    mount.innerHTML = navbarTemplate(isLoggedIn, hasRoom, isGuest);
 
     if (isLoggedIn) {
       document.getElementById("navbar-logout").addEventListener("click", () => {

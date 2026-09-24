@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Dashboard</title>
-  <link rel="stylesheet" href="../css/base.css" />
-  <link rel="stylesheet" href="../css/components.css" />
-  <link rel="stylesheet" href="../css/pages/dashboard.css" />
+  <link rel="stylesheet" href="../css/base.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/pages/dashboard.css?v=20260924b" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
@@ -38,14 +38,14 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js"></script>
-  <script src="../js/utils/dom.js"></script>
-  <script src="../js/api/client.js"></script>
-  <script src="../js/api/auth.js"></script>
-  <script src="../js/utils/auth-guard.js"></script>
-  <script src="../js/api/dashboard.js"></script>
+  <script src="../js/utils/storage.js?v=20260924b"></script>
+  <script src="../js/utils/dom.js?v=20260924b"></script>
+  <script src="../js/api/client.js?v=20260924b"></script>
+  <script src="../js/api/auth.js?v=20260924b"></script>
+  <script src="../js/utils/auth-guard.js?v=20260924b"></script>
+  <script src="../js/api/dashboard.js?v=20260924b"></script>
   <script>
-    if (Naji.authGuard.requireAuth()) {
+    if (Naji.authGuard.requireAccount()) {
       Naji.dom.loadNavbar("#navbar-mount");
 
       const { createApp } = Vue;

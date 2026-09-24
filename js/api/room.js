@@ -44,6 +44,11 @@
     );
   }
 
+  async function leaveRoom(passCode) {
+    await window.Naji.apiClient.post(`/room/leave?passCode=${encodeURIComponent(passCode)}`);
+    window.Naji.storage.clearRoomPasscode();
+  }
+
   window.Naji = window.Naji || {};
-  window.Naji.room = { createRoom, joinRoom, getPlayersInRoom, getRoomAdmin, kickPlayer };
+  window.Naji.room = { createRoom, joinRoom, getPlayersInRoom, getRoomAdmin, kickPlayer, leaveRoom };
 })();

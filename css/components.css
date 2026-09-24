@@ -58,6 +58,71 @@
   outline-offset: 1px;
 }
 
+.password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.password-field__control {
+  position: relative;
+  display: flex;
+}
+
+.password-field__control input {
+  flex: 1;
+  min-width: 0;
+  padding-right: 64px;
+}
+
+.password-field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d7d70;
+  cursor: pointer;
+}
+
+.password-field__toggle:hover {
+  background-color: #eef4f1;
+}
+
+.password-field__caps {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-danger);
+}
+
+.password-field__match {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #23805f;
+}
+
+.password-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7d75;
+}
+
+.password-rules__item--met {
+  color: #23805f;
+}
+
 .form-error {
   color: var(--color-danger);
   font-size: 13px;
@@ -168,4 +233,9 @@
     justify-content: center;
     gap: 8px 18px;
   }
+}
+
+.password-field input:disabled {
+  background-color: #f1f4f3;
+  cursor: not-allowed;
 }

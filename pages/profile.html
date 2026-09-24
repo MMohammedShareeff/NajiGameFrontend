@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Profile</title>
-  <link rel="stylesheet" href="../css/base.css" />
-  <link rel="stylesheet" href="../css/components.css" />
-  <link rel="stylesheet" href="../css/pages/profile.css" />
+  <link rel="stylesheet" href="../css/base.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/pages/profile.css?v=20260924b" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
@@ -48,17 +48,28 @@
 
             <label class="form-field">
               <span>New password</span>
-              <input
-                type="password"
+              <password-field
                 v-model="form.password"
                 autocomplete="new-password"
                 placeholder="Leave blank to keep your current password"
+                show-rules
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Confirm new password</span>
+              <password-field
+                v-model="form.confirmPassword"
+                autocomplete="new-password"
+                placeholder="Type the new password again"
+                :match-with="form.password"
+                :disabled="!form.password"
               />
             </label>
           </div>
 
           <p class="profile-hint">
-            Saving sends a verification code to the email above. Your changes only apply once you enter it.
+            Saving sends a verification code to your current email. If you change your email, a second code goes to the new address before anything is applied.
           </p>
 
           <div class="profile-actions">
@@ -69,8 +80,16 @@
         </form>
 
         <form v-else class="card profile-card" @submit.prevent="handleVerify">
-          <h2>Check your email</h2>
-          <p>We sent a verification code to <strong>{{ pendingEmail }}</strong>. It expires in 5 minutes.</p>
+          <p v-if="totalVerifySteps > 1" class="profile-step">Step {{ verifyStep }} of {{ totalVerifySteps }}</p>
+          <h2>{{ verifyStep === 2 ? "Confirm your new email" : "Confirm it's you" }}</h2>
+          <p v-if="verifyStep === 1">
+            To protect your account, we sent a verification code to your current email
+            <strong>{{ profile.email }}</strong>. It expires in 10 minutes.
+          </p>
+          <p v-else>
+            Now we sent a second code to your new email <strong>{{ pendingEmail }}</strong>
+            to make sure it's yours. It expires in 10 minutes.
+          </p>
 
           <label class="form-field">
             <span>Verification code</span>
@@ -79,7 +98,7 @@
 
           <div class="profile-actions">
             <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isVerifying }" :disabled="isVerifying">
-              {{ isVerifying ? "Verifying..." : "Verify and apply" }}
+              {{ isVerifying ? "Verifying..." : verifyStep < totalVerifySteps ? "Verify and continue" : "Verify and apply" }}
             </button>
             <button type="button" class="btn btn-secondary" :disabled="isVerifying" @click="cancelVerification">
               Cancel
@@ -90,31 +109,31 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js"></script>
-  <script src="../js/utils/toast.js"></script>
-  <script src="../js/utils/dom.js"></script>
-  <script src="../js/api/client.js"></script>
-  <script src="../js/api/auth.js"></script>
-  <script src="../js/utils/auth-guard.js"></script>
-  <script src="../js/api/profile.js"></script>
+  <script src="../js/utils/storage.js?v=20260924b"></script>
+  <script src="../js/utils/toast.js?v=20260924b"></script>
+  <script src="../js/utils/dom.js?v=20260924b"></script>
+  <script src="../js/api/client.js?v=20260924b"></script>
+  <script src="../js/api/auth.js?v=20260924b"></script>
+  <script src="../js/utils/auth-guard.js?v=20260924b"></script>
+  <script src="../js/api/profile.js?v=20260924b"></script>
+  <script src="../js/components/password-field.js?v=20260924b"></script>
   <script>
-    const MIN_USERNAME_LENGTH = 4;
-    const MIN_PASSWORD_LENGTH = 8;
-
-    if (Naji.authGuard.requireAuth()) {
+    if (Naji.authGuard.requireAccount()) {
       Naji.dom.loadNavbar("#navbar-mount");
 
       const { createApp } = Vue;
 
-      createApp({
+      const app = createApp({
         data() {
           return {
             profile: null,
             loadError: "",
             step: "edit",
-            form: { userName: "", email: "", password: "" },
+            form: { userName: "", email: "", password: "", confirmPassword: "" },
             pendingEmail: "",
             pendingUsernameChange: false,
+            verifyStep: 1,
+            totalVerifySteps: 1,
             code: "",
             isSaving: false,
             isVerifying: false
@@ -128,25 +147,18 @@
             this.loadError = "";
             try {
               this.profile = await Naji.profile.getMyProfile();
-              this.form = { userName: this.profile.userName, email: this.profile.email, password: "" };
+              this.form = { userName: this.profile.userName, email: this.profile.email, password: "", confirmPassword: "" };
             } catch (error) {
               this.loadError = error.message || "Something went wrong while loading your profile.";
             }
           },
           validationMessage(changes) {
-            if (changes.userName && !/^[A-Za-z]/.test(changes.userName)) {
-              return "Your username must start with a letter.";
-            }
-            if (changes.userName && changes.userName.length < MIN_USERNAME_LENGTH) {
-              return `Your username must be at least ${MIN_USERNAME_LENGTH} characters long.`;
-            }
-            if (!this.form.email || !this.form.email.includes("@")) {
-              return "Please enter a valid email address.";
-            }
-            if (changes.password && changes.password.length < MIN_PASSWORD_LENGTH) {
-              return `Your password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
-            }
-            return "";
+            return (changes.userName && Naji.validation.usernameMessage(changes.userName))
+              || Naji.validation.emailMessage(this.form.email)
+              || (changes.password && Naji.validation.firstUnmetPasswordMessage(changes.password))
+              || (changes.password && Naji.validation.confirmationMessage(changes.password, this.form.confirmPassword))
+              || (!changes.password && this.form.confirmPassword && "Enter your new password first, then confirm it.")
+              || "";
           },
           async handleSave() {
             const changes = {
@@ -155,7 +167,7 @@
               password: this.form.password
             };
 
-            if (!changes.userName && changes.email === this.profile.email && !changes.password) {
+            if (!changes.userName && changes.email === this.profile.email && !changes.password && !this.form.confirmPassword) {
               Naji.toast.info("There is nothing to save yet.");
               return;
             }
@@ -171,9 +183,11 @@
               await Naji.profile.requestUpdate(changes);
               this.pendingEmail = changes.email;
               this.pendingUsernameChange = Boolean(changes.userName);
+              this.verifyStep = 1;
+              this.totalVerifySteps = changes.email.toLowerCase() !== this.profile.email.toLowerCase() ? 2 : 1;
               this.code = "";
               this.step = "verify";
-              Naji.toast.success("Verification code sent. Check your email.");
+              Naji.toast.success("Verification code sent to your current email.");
             } catch (error) {
               Naji.toast.error(error.message || "Unable to save your changes.");
             } finally {
@@ -188,7 +202,14 @@
 
             this.isVerifying = true;
             try {
-              await Naji.profile.verifyUpdate(this.pendingEmail, this.code);
+              const outcome = await Naji.profile.verifyUpdate(this.code);
+              if (outcome === "NEW_EMAIL_CODE_SENT") {
+                this.verifyStep = 2;
+                this.code = "";
+                this.isVerifying = false;
+                Naji.toast.success(`Code sent to ${this.pendingEmail}.`);
+                return;
+              }
             } catch (error) {
               Naji.toast.error(error.message || "Unable to verify that code.");
               this.isVerifying = false;
@@ -211,7 +232,10 @@
             this.code = "";
           }
         }
-      }).mount("#app");
+      });
+
+      app.component("password-field", Naji.components.PasswordField);
+      app.mount("#app");
     }
   </script>
 </body>

@@ -12,11 +12,24 @@
     return false;
   }
 
+  function requireAccount() {
+    if (!requireAuth()) {
+      return false;
+    }
+
+    if (window.Naji.storage.isGuest()) {
+      window.location.href = "/pages/lobby.html";
+      return false;
+    }
+
+    return true;
+  }
+
   function handleSessionExpired() {
     window.Naji.storage.clearSession();
     window.location.href = `${LOGIN_URL}?expired=1`;
   }
 
   window.Naji = window.Naji || {};
-  window.Naji.authGuard = { requireAuth, handleSessionExpired };
+  window.Naji.authGuard = { requireAuth, requireAccount, handleSessionExpired };
 })();

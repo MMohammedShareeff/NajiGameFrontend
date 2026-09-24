@@ -14,14 +14,9 @@
     return window.Naji.apiClient.put("/player/update", payload);
   }
 
-  function verifyUpdate(email, code) {
-    const query = new URLSearchParams({
-      email,
-      verificationCode: code,
-      isUpdate: "true",
-      isPassReset: "false"
-    });
-    return window.Naji.apiClient.post(`/verification/verify-email?${query}`);
+  function verifyUpdate(code) {
+    const query = new URLSearchParams({ verificationCode: code });
+    return window.Naji.apiClient.post(`/verification/verify-update?${query}`);
   }
 
   window.Naji = window.Naji || {};

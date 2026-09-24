@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Game</title>
-  <link rel="stylesheet" href="../css/base.css" />
-  <link rel="stylesheet" href="../css/components.css" />
-  <link rel="stylesheet" href="../css/pages/game.css" />
+  <link rel="stylesheet" href="../css/base.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924b" />
+  <link rel="stylesheet" href="../css/pages/game.css?v=20260924b" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
@@ -23,6 +23,8 @@
           <button type="button" class="btn btn-primary" @click="goToLobby">Back to lobby</button>
         </div>
       </div>
+
+      <p v-else-if="!ready" class="game-loading">Rejoining your room...</p>
 
       <div v-else>
         <div class="room-code-banner">
@@ -48,6 +50,10 @@
                 >Kick</button>
               </li>
             </ul>
+
+            <div class="leave-room">
+              <button type="button" class="btn btn-secondary" @click="confirmDialog = 'leave'">Leave room</button>
+            </div>
           </aside>
 
           <section class="card game-panel game-panel--scenario">
@@ -78,9 +84,17 @@
               @click="handleStartGame"
             >{{ isStarting ? "Starting..." : "Start Game" }}</button>
 
-            <p class="game-scenario">{{ scenario }}</p>
+            <div v-if="isAdmin && gameRunning" class="end-game">
+              <button type="button" class="btn btn-danger" @click="confirmDialog = 'end'">End game</button>
+            </div>
 
-            <form class="game-answer-form" @submit.prevent="handleSubmit">
+            <p v-if="!showBoard" class="game-waiting">
+              {{ isAdmin ? "Everyone in the room? Press Start Game when you're ready." : "Waiting for the host to start the game..." }}
+            </p>
+
+            <p v-if="showBoard" class="game-scenario">{{ scenario }}</p>
+
+            <form v-if="showBoard" class="game-answer-form" @submit.prevent="handleSubmit">
               <textarea
                 class="game-answer"
                 v-model="answerText"
@@ -99,9 +113,27 @@
                 {{ isSubmitting ? "Sending..." : "Send" }}
               </button>
             </form>
+
+            <div v-if="showBoard && roundNumber" class="submissions">
+              <div class="submissions__head">
+                <strong>Answers in</strong>
+                <span class="submissions__count">{{ submissionRows.length }} / {{ players.length }}</span>
+              </div>
+              <ul class="submissions__list">
+                <li v-for="row in submissionRows" :key="row.playerName" class="submissions__item">
+                  <span class="submissions__name">{{ row.playerName }}</span>
+                  <span class="submissions__time">{{ row.timeLabel }}</span>
+                  <span class="submissions__comment">{{ row.comment }}</span>
+                </li>
+                <li v-for="name in waitingNames" :key="name" class="submissions__item submissions__item--waiting">
+                  <span class="submissions__name">{{ name }}</span>
+                  <span class="submissions__comment">Still thinking...</span>
+                </li>
+              </ul>
+            </div>
           </section>
 
-          <aside class="card game-panel game-panel--leaderboard">
+          <aside v-if="showBoard" class="card game-panel game-panel--leaderboard">
             <h2>Leaderboard</h2>
             <p v-if="!leaderboardPlayers.length && !isRevealing" class="text-muted">No scores yet.</p>
             <transition-group name="reveal" tag="div" class="leaderboard-cards">
@@ -150,6 +182,25 @@
           </div>
         </div>
 
+        <div v-if="confirmDialog" class="modal-backdrop modal-backdrop--centered">
+          <div class="card confirm-dialog" role="dialog" aria-modal="true">
+            <h2>{{ confirmDialog === "end" ? "End the game?" : "Leave this room?" }}</h2>
+            <p>{{ confirmText }}</p>
+            <div class="confirm-dialog__actions">
+              <button type="button" class="btn btn-secondary" :disabled="isEnding || isLeaving" @click="confirmDialog = null">
+                {{ confirmDialog === "end" ? "Keep playing" : "Stay" }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                :class="{ 'is-loading': isEnding || isLeaving }"
+                :disabled="isEnding || isLeaving"
+                @click="runConfirmedAction"
+              >{{ confirmButtonLabel }}</button>
+            </div>
+          </div>
+        </div>
+
         <div v-if="finalPopupOpen" class="modal-backdrop modal-backdrop--centered">
           <div class="card final-popup">
             <h2>Game over</h2>
@@ -174,7 +225,13 @@
                 @click="handleStartGame"
               >{{ isStarting ? "Starting..." : "Play again" }}</button>
               <p v-else class="text-muted">Waiting for the host to start another game...</p>
-              <button type="button" class="btn btn-secondary" @click="goToLobby">Back to lobby</button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                :class="{ 'is-loading': isLeaving }"
+                :disabled="isLeaving"
+                @click="handleLeave"
+              >{{ isLeaving ? "Leaving..." : "Leave room" }}</button>
             </div>
           </div>
         </div>
@@ -182,15 +239,15 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js"></script>
-  <script src="../js/utils/toast.js"></script>
-  <script src="../js/utils/dom.js"></script>
-  <script src="../js/api/client.js"></script>
-  <script src="../js/api/auth.js"></script>
-  <script src="../js/utils/auth-guard.js"></script>
-  <script src="../js/api/room.js"></script>
-  <script src="../js/api/game.js"></script>
-  <script src="../js/ws/socket.js"></script>
+  <script src="../js/utils/storage.js?v=20260924b"></script>
+  <script src="../js/utils/toast.js?v=20260924b"></script>
+  <script src="../js/utils/dom.js?v=20260924b"></script>
+  <script src="../js/api/client.js?v=20260924b"></script>
+  <script src="../js/api/auth.js?v=20260924b"></script>
+  <script src="../js/utils/auth-guard.js?v=20260924b"></script>
+  <script src="../js/api/room.js?v=20260924b"></script>
+  <script src="../js/api/game.js?v=20260924b"></script>
+  <script src="../js/ws/socket.js?v=20260924b"></script>
   <script>
     const TYPING_INTERVAL_MS = 20;
     const VERDICT_PAUSE_MS = 1500;
@@ -216,8 +273,15 @@
             hasSubmitted: false,
             username: Naji.storage.getUsername(),
             isAdmin: false,
+            lastAdmin: "",
+            roomClosed: false,
             isStarting: false,
             isKicking: false,
+            ready: false,
+            confirmDialog: null,
+            isEnding: false,
+            isLeaving: false,
+            submissions: [],
             updatesBanner: "",
             roomPasscode: "",
             copied: false,
@@ -241,6 +305,34 @@
           };
         },
         computed: {
+          showBoard() {
+            return this.gameRunning || this.finalPopupOpen;
+          },
+          submissionRows() {
+            return this.submissions.map((submission, index) => ({
+              playerName: submission.playerName,
+              timeLabel: this.formatElapsed(submission.millisIntoRound),
+              comment: this.submissionComment(submission.millisIntoRound, index)
+            }));
+          },
+          waitingNames() {
+            const submittedNames = this.submissions.map((submission) => submission.playerName);
+            return this.players.map((player) => player.userName).filter((name) => !submittedNames.includes(name));
+          },
+          confirmText() {
+            if (this.confirmDialog === "end") {
+              return "This ends the game and closes the room for everyone. Everyone goes back to the lobby.";
+            }
+            return this.isAdmin
+              ? "You'll leave the room and the host role passes to another player."
+              : "You'll leave the room and can rejoin later with the room code.";
+          },
+          confirmButtonLabel() {
+            if (this.confirmDialog === "end") {
+              return this.isEnding ? "Ending..." : "Yes, end the game";
+            }
+            return this.isLeaving ? "Leaving..." : "Yes, leave";
+          },
           timerPercent() {
             return this.secondsTotal ? (this.secondsLeft / this.secondsTotal) * 100 : 0;
           },
@@ -265,16 +357,23 @@
         async mounted() {
           const passCode = Naji.storage.getRoomPasscode();
           if (!passCode) {
-            this.loadErrorTitle = "No room yet";
-            this.loadError = "You haven't joined a room. Head to the lobby to join or create one.";
+            this.loadErrorTitle = "Join or create a room first";
+            this.loadError = "You're not in a room right now. Head to the lobby to join one or create your own.";
             return;
           }
           this.roomPasscode = passCode;
 
           try {
             this.players = await Naji.room.getPlayersInRoom(passCode);
+            if (!this.players.some((player) => player.userName === this.username)) {
+              Naji.storage.clearRoomPasscode();
+              this.loadErrorTitle = "Join or create a room first";
+              this.loadError = "You're not in that room any more. Head to the lobby to join one or create your own.";
+              return;
+            }
             const admin = await Naji.room.getRoomAdmin(passCode);
             this.isAdmin = admin.userName === this.username;
+            this.lastAdmin = admin.userName;
 
             const roomId = await Naji.apiClient.get(`/room/room-id?passCode=${encodeURIComponent(passCode)}`);
 
@@ -290,6 +389,7 @@
               this.roundNumber = round.round;
               this.totalRounds = round.totalRounds;
               this.roundPhase = "answering";
+              this.submissions = [];
               this.startCountdown(round.seconds);
               this.answerText = "";
               this.hasSubmitted = false;
@@ -315,6 +415,20 @@
             Naji.socket.subscribe(`/topic/room/${roomId}/updates`, (body) => {
               this.handleUpdate(body);
             });
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/submissions`, (body) => {
+              const message = JSON.parse(body);
+              if (message.round === this.roundNumber) {
+                this.submissions = message.submissions;
+              }
+            });
+
+            Naji.socket.subscribe(`/topic/room/${roomId}/players`, (body) => {
+              this.applyPlayers(JSON.parse(body));
+            });
+
+            await this.restoreGameState(passCode);
+            this.ready = true;
           } catch (error) {
             if (error.status === 404) {
               Naji.storage.clearRoomPasscode();
@@ -323,6 +437,18 @@
             } else {
               this.loadErrorTitle = "Couldn't load the room";
               this.loadError = error.message || "Something went wrong while loading the room.";
+            }
+          }
+        },
+        watch: {
+          answerText(value) {
+            if (!this.roundNumber || !this.roomPasscode) {
+              return;
+            }
+            if (value) {
+              sessionStorage.setItem(this.draftKey(), value);
+            } else {
+              sessionStorage.removeItem(this.draftKey());
             }
           }
         },
@@ -357,6 +483,149 @@
               this.isStarting = false;
             }
           },
+          async handleEndGame() {
+            this.isEnding = true;
+            try {
+              await Naji.game.stopGame(Naji.storage.getRoomPasscode());
+              this.leaveClosedRoom("The game was ended. Head back in from the lobby whenever you like.");
+            } catch (error) {
+              Naji.toast.error(error.message || "Unable to end the game.");
+              this.isEnding = false;
+              this.confirmDialog = null;
+            }
+          },
+          async restoreGameState(passCode) {
+            let state;
+            try {
+              state = await Naji.game.getGameState(passCode);
+            } catch (error) {
+              return;
+            }
+
+            if (!state.running) {
+              if (state.finalLeaderboard) {
+                this.showFinalResults(state.finalLeaderboard);
+              } else if (state.stopMessage) {
+                this.updatesBanner = state.stopMessage;
+              }
+              return;
+            }
+
+            this.gameRunning = true;
+            this.roundNumber = state.round;
+            this.totalRounds = state.totalRounds;
+            this.scenario = state.scenario;
+            this.hasSubmitted = state.hasSubmitted;
+            this.answerText = sessionStorage.getItem(this.draftKey()) || "";
+            this.secondsTotal = state.secondsTotal;
+            this.submissions = state.submissions || [];
+
+            if (state.leaderboard) {
+              this.leaderboardPlayers = this.parseLeaderboard(state.leaderboard);
+            }
+
+            if (state.phase === "answering") {
+              this.roundPhase = "answering";
+              this.startCountdown(state.secondsLeft, state.secondsTotal);
+            } else {
+              this.roundPhase = state.phase === "results" ? "judged" : "answering";
+              this.secondsLeft = 0;
+            }
+
+            if (state.results) {
+              this.playRoundResults(state.results);
+            }
+          },
+          draftKey() {
+            return `naji.draft.${this.roomPasscode}.${this.roundNumber}`;
+          },
+          async handleLeave() {
+            this.isLeaving = true;
+            try {
+              await Naji.room.leaveRoom(Naji.storage.getRoomPasscode());
+              window.location.href = "/pages/lobby.html";
+            } catch (error) {
+              if (error.status === 400 || error.status === 404) {
+                Naji.storage.clearRoomPasscode();
+                window.location.href = "/pages/lobby.html";
+                return;
+              }
+              Naji.toast.error(error.message || "Unable to leave the room.");
+              this.isLeaving = false;
+              this.confirmDialog = null;
+            }
+          },
+          runConfirmedAction() {
+            return this.confirmDialog === "end" ? this.handleEndGame() : this.handleLeave();
+          },
+          formatElapsed(millis) {
+            const totalSeconds = Math.floor(millis / 1000);
+            return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+          },
+          submissionComment(millis, index) {
+            const fraction = this.secondsTotal ? millis / (this.secondsTotal * 1000) : 1;
+            if (index === 0) {
+              return "First to answer. Bold move.";
+            }
+            if (fraction < 0.25) {
+              return "Barely blinked before answering.";
+            }
+            if (fraction < 0.5) {
+              return "Quick thinker.";
+            }
+            if (fraction < 0.8) {
+              return "Took time to plan the perfect escape.";
+            }
+            return "Cut it close. Nerves of steel.";
+          },
+          leaveClosedRoom(message) {
+            if (this.roomClosed) {
+              return;
+            }
+            this.roomClosed = true;
+            this.stopCountdown();
+            Naji.socket.disconnect();
+            Naji.storage.clearRoomPasscode();
+            Naji.toast.info(message);
+            setTimeout(() => {
+              window.location.href = "/pages/lobby.html";
+            }, 1500);
+          },
+          applyPlayers(message) {
+            const updatedPlayers = message.players;
+            const wasAdmin = this.isAdmin;
+            this.isAdmin = message.admin === this.username;
+            if (this.isAdmin && !wasAdmin) {
+              Naji.toast.info("You're now the host of this room.");
+            } else if (!this.isAdmin && message.admin && message.admin !== this.lastAdmin && this.lastAdmin) {
+              Naji.toast.info(`${message.admin} is now the host.`);
+            }
+            this.lastAdmin = message.admin;
+
+            const wasInRoom = this.players.some((player) => player.userName === this.username);
+            const stillInRoom = updatedPlayers.some((player) => player.userName === this.username);
+
+            if (wasInRoom && !stillInRoom) {
+              Naji.storage.clearRoomPasscode();
+              this.stopCountdown();
+              Naji.socket.disconnect();
+              this.loadErrorTitle = "You were removed";
+              this.loadError = "The host removed you from this room. Head to the lobby to join another one.";
+              return;
+            }
+
+            const previousNames = this.players.map((player) => player.userName);
+            const updatedNames = updatedPlayers.map((player) => player.userName);
+
+            updatedNames
+              .filter((name) => !previousNames.includes(name))
+              .forEach((name) => Naji.toast.info(`${name} joined the room.`));
+            previousNames
+              .filter((name) => !updatedNames.includes(name))
+              .forEach((name) => Naji.toast.info(`${name} left the room.`));
+
+            this.players = updatedPlayers;
+          },
           async handleKick(playerName) {
             this.isKicking = true;
             try {
@@ -384,9 +653,9 @@
           goToLobby() {
             window.location.href = "/pages/lobby.html";
           },
-          startCountdown(seconds) {
+          startCountdown(seconds, total = seconds) {
             this.stopCountdown();
-            this.secondsTotal = seconds;
+            this.secondsTotal = total;
             this.secondsLeft = seconds;
             this.countdownTimerId = setInterval(() => {
               this.secondsLeft = Math.max(0, this.secondsLeft - 1);
@@ -423,9 +692,18 @@
               return;
             }
 
+            if (message.startsWith("The room was closed")) {
+              this.leaveClosedRoom(message);
+              return;
+            }
+
             if (message.startsWith("The game was stopped")) {
               this.stopCountdown();
               this.gameRunning = false;
+              this.confirmDialog = null;
+              this.roundNumber = 0;
+              this.roundPhase = "";
+              this.scenario = "Waiting for the round to start...";
               this.revealToken++;
               this.resultsOverlayOpen = false;
               this.isRevealingResults = false;
