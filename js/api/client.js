@@ -1,5 +1,15 @@
 (function () {
   const API_BASE_URL = "http://localhost:8080";
+  const NETWORK_ERROR_MESSAGE = "Can't reach the server. Check your connection and try again.";
+  const AUTH_PATHS = ["/player/login", "/player/register"];
+
+  function expireSession() {
+    if (window.Naji.authGuard) {
+      window.Naji.authGuard.handleSessionExpired();
+    } else {
+      window.Naji.storage.clearSession();
+    }
+  }
 
   async function request(path, { method = "GET", body, headers = {} } = {}) {
     const requestHeaders = { ...headers };
@@ -8,16 +18,20 @@
       requestHeaders["Content-Type"] = "application/json";
     }
 
-    const token = window.Naji.storage.getToken();
-    if (token) {
-      requestHeaders["Authorization"] = `Bearer ${token}`;
+    if (window.Naji.storage.hasValidSession()) {
+      requestHeaders["Authorization"] = `Bearer ${window.Naji.storage.getToken()}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers: requestHeaders,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        headers: requestHeaders,
+        body: body !== undefined ? JSON.stringify(body) : undefined
+      });
+    } catch {
+      throw { status: 0, message: NETWORK_ERROR_MESSAGE };
+    }
 
     const contentType = response.headers.get("Content-Type") || "";
     const rawText = await response.text();
@@ -26,6 +40,9 @@
       : rawText;
 
     if (!response.ok) {
+      if (response.status === 401 && !AUTH_PATHS.includes(path)) {
+        expireSession();
+      }
       const message = typeof data === "string" && data
         ? data
         : `Request failed with status ${response.status}`;

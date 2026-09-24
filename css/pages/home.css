@@ -31,3 +31,13 @@
   font-size: 16px;
   padding: 14px 32px;
 }
+
+@media (max-width: 600px) {
+  .hero {
+    padding: 48px 16px;
+  }
+
+  .hero h1 {
+    font-size: 18px;
+  }
+}

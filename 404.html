@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Page not found</title>
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="container">
+    <div class="card state-card">
+      <h2>Page not found</h2>
+      <p>We couldn't find the page you were looking for. It may have moved, or the link is wrong.</p>
+      <div class="state-card__actions">
+        <a class="btn btn-primary" href="/index.html">Go home</a>
+        <a class="btn btn-secondary" href="/pages/lobby.html">Open the lobby</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/utils/storage.js"></script>
+  <script src="/js/utils/dom.js"></script>
+  <script>
+    Naji.dom.loadNavbar("#navbar-mount");
+  </script>
+</body>
+</html>

@@ -15,6 +15,34 @@
     localStorage.removeItem(TOKEN_KEY);
   }
 
+  function readTokenPayload() {
+    const token = getToken();
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      return JSON.parse(atob(payload));
+    } catch {
+      return null;
+    }
+  }
+
+  function getPlayerId() {
+    return readTokenPayload()?.playerId ?? null;
+  }
+
+  function hasValidSession() {
+    const payload = readTokenPayload();
+    return Boolean(payload) && (!payload.exp || payload.exp * 1000 > Date.now());
+  }
+
+  function clearSession() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USERNAME_KEY);
+  }
+
   function saveRoomPasscode(passcode) {
     localStorage.setItem(ROOM_PASSCODE_KEY, passcode);
   }
@@ -44,6 +72,9 @@
     saveToken,
     getToken,
     clearToken,
+    getPlayerId,
+    hasValidSession,
+    clearSession,
     saveRoomPasscode,
     getRoomPasscode,
     clearRoomPasscode,

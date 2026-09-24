@@ -31,7 +31,6 @@
 
       <form v-if="activeTab === 'login'" class="auth-form" @submit.prevent="handleLogin">
         <h2>Welcome back</h2>
-        <p v-if="signupSuccessMessage" class="form-success">{{ signupSuccessMessage }}</p>
 
         <label class="form-field">
           <span>Username</span>
@@ -43,9 +42,7 @@
           <input type="password" v-model="loginForm.password" autocomplete="current-password" />
         </label>
 
-        <p v-if="loginError" class="form-error">{{ loginError }}</p>
-
-        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+        <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isSubmitting }" :disabled="isSubmitting">
           {{ isSubmitting ? "Signing in..." : "Sign In" }}
         </button>
       </form>
@@ -68,9 +65,7 @@
           <input type="password" v-model="signupForm.password" autocomplete="new-password" />
         </label>
 
-        <p v-if="signupError" class="form-error">{{ signupError }}</p>
-
-        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+        <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isSubmitting }" :disabled="isSubmitting">
           {{ isSubmitting ? "Creating account..." : "Register Today!" }}
         </button>
       </form>
@@ -78,6 +73,7 @@
   </main>
 
   <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/toast.js"></script>
   <script src="../js/utils/dom.js"></script>
   <script src="../js/api/client.js"></script>
   <script src="../js/api/auth.js"></script>
@@ -92,18 +88,22 @@
           activeTab: "login",
           isSubmitting: false,
           loginForm: { userName: "", password: "" },
-          signupForm: { userName: "", email: "", password: "" },
-          loginError: "",
-          signupError: "",
-          signupSuccessMessage: ""
+          signupForm: { userName: "", email: "", password: "" }
         };
+      },
+      mounted() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("expired")) {
+          Naji.toast.info("Your session expired. Please sign in again.");
+        }
+        if (params.get("renamed")) {
+          Naji.toast.success("Username updated. Please sign in with your new username.");
+        }
       },
       methods: {
         async handleLogin() {
-          this.loginError = "";
-
           if (!this.loginForm.userName || !this.loginForm.password) {
-            this.loginError = "Please enter your username and password.";
+            Naji.toast.error("Please enter your username and password.");
             return;
           }
 
@@ -115,32 +115,30 @@
             });
             window.location.href = "/pages/lobby.html";
           } catch (error) {
-            this.loginError = error.message || "Unable to sign in.";
+            Naji.toast.error(error.message || "Unable to sign in.");
           } finally {
             this.isSubmitting = false;
           }
         },
         async handleSignup() {
-          this.signupError = "";
-
           const { userName, email, password } = this.signupForm;
           if (!userName || !email || !password) {
-            this.signupError = "Please fill in username, email, and password.";
+            Naji.toast.error("Please fill in username, email, and password.");
             return;
           }
           if (password.length < 8) {
-            this.signupError = "Password must be at least 8 characters long.";
+            Naji.toast.error("Password must be at least 8 characters long.");
             return;
           }
 
           this.isSubmitting = true;
           try {
             await Naji.auth.register({ userName, email, password });
-            this.signupSuccessMessage = "Account created — check your email to verify before signing in.";
+            Naji.toast.success("Account created. Check your email to verify before signing in.");
             this.signupForm = { userName: "", email: "", password: "" };
             this.activeTab = "login";
           } catch (error) {
-            this.signupError = error.message || "Unable to register.";
+            Naji.toast.error(error.message || "Unable to register.");
           } finally {
             this.isSubmitting = false;
           }

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Profile</title>
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/pages/profile.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="profile-page">
+    <div id="app">
+      <div v-if="loadError" class="card state-card">
+        <h2>Couldn't load your profile</h2>
+        <p>{{ loadError }}</p>
+        <div class="state-card__actions">
+          <button type="button" class="btn btn-primary" @click="loadProfile">Try again</button>
+        </div>
+      </div>
+
+      <p v-else-if="!profile" class="profile-hint" style="text-align: center; color: var(--color-text-muted)">
+        Loading your profile...
+      </p>
+
+      <template v-else>
+        <div class="profile-header">
+          <h1 class="gradient-text">{{ profile.userName }}</h1>
+          <p>Your account</p>
+        </div>
+
+        <form v-if="step === 'edit'" class="card profile-card" @submit.prevent="handleSave">
+          <h2>Edit your details</h2>
+
+          <div class="profile-form">
+            <label class="form-field">
+              <span>Username</span>
+              <input type="text" v-model.trim="form.userName" autocomplete="username" />
+            </label>
+
+            <label class="form-field">
+              <span>Email</span>
+              <input type="email" v-model.trim="form.email" autocomplete="email" />
+            </label>
+
+            <label class="form-field">
+              <span>New password</span>
+              <input
+                type="password"
+                v-model="form.password"
+                autocomplete="new-password"
+                placeholder="Leave blank to keep your current password"
+              />
+            </label>
+          </div>
+
+          <p class="profile-hint">
+            Saving sends a verification code to the email above. Your changes only apply once you enter it.
+          </p>
+
+          <div class="profile-actions">
+            <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isSaving }" :disabled="isSaving">
+              {{ isSaving ? "Sending code..." : "Save changes" }}
+            </button>
+          </div>
+        </form>
+
+        <form v-else class="card profile-card" @submit.prevent="handleVerify">
+          <h2>Check your email</h2>
+          <p>We sent a verification code to <strong>{{ pendingEmail }}</strong>. It expires in 5 minutes.</p>
+
+          <label class="form-field">
+            <span>Verification code</span>
+            <input type="text" v-model.trim="code" autocomplete="one-time-code" />
+          </label>
+
+          <div class="profile-actions">
+            <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isVerifying }" :disabled="isVerifying">
+              {{ isVerifying ? "Verifying..." : "Verify and apply" }}
+            </button>
+            <button type="button" class="btn btn-secondary" :disabled="isVerifying" @click="cancelVerification">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </template>
+    </div>
+  </main>
+
+  <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/toast.js"></script>
+  <script src="../js/utils/dom.js"></script>
+  <script src="../js/api/client.js"></script>
+  <script src="../js/api/auth.js"></script>
+  <script src="../js/utils/auth-guard.js"></script>
+  <script src="../js/api/profile.js"></script>
+  <script>
+    const MIN_USERNAME_LENGTH = 4;
+    const MIN_PASSWORD_LENGTH = 8;
+
+    if (Naji.authGuard.requireAuth()) {
+      Naji.dom.loadNavbar("#navbar-mount");
+
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            profile: null,
+            loadError: "",
+            step: "edit",
+            form: { userName: "", email: "", password: "" },
+            pendingEmail: "",
+            pendingUsernameChange: false,
+            code: "",
+            isSaving: false,
+            isVerifying: false
+          };
+        },
+        mounted() {
+          this.loadProfile();
+        },
+        methods: {
+          async loadProfile() {
+            this.loadError = "";
+            try {
+              this.profile = await Naji.profile.getMyProfile();
+              this.form = { userName: this.profile.userName, email: this.profile.email, password: "" };
+            } catch (error) {
+              this.loadError = error.message || "Something went wrong while loading your profile.";
+            }
+          },
+          validationMessage(changes) {
+            if (changes.userName && !/^[A-Za-z]/.test(changes.userName)) {
+              return "Your username must start with a letter.";
+            }
+            if (changes.userName && changes.userName.length < MIN_USERNAME_LENGTH) {
+              return `Your username must be at least ${MIN_USERNAME_LENGTH} characters long.`;
+            }
+            if (!this.form.email || !this.form.email.includes("@")) {
+              return "Please enter a valid email address.";
+            }
+            if (changes.password && changes.password.length < MIN_PASSWORD_LENGTH) {
+              return `Your password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
+            }
+            return "";
+          },
+          async handleSave() {
+            const changes = {
+              userName: this.form.userName !== this.profile.userName ? this.form.userName : "",
+              email: this.form.email,
+              password: this.form.password
+            };
+
+            if (!changes.userName && changes.email === this.profile.email && !changes.password) {
+              Naji.toast.info("There is nothing to save yet.");
+              return;
+            }
+
+            const problem = this.validationMessage(changes);
+            if (problem) {
+              Naji.toast.error(problem);
+              return;
+            }
+
+            this.isSaving = true;
+            try {
+              await Naji.profile.requestUpdate(changes);
+              this.pendingEmail = changes.email;
+              this.pendingUsernameChange = Boolean(changes.userName);
+              this.code = "";
+              this.step = "verify";
+              Naji.toast.success("Verification code sent. Check your email.");
+            } catch (error) {
+              Naji.toast.error(error.message || "Unable to save your changes.");
+            } finally {
+              this.isSaving = false;
+            }
+          },
+          async handleVerify() {
+            if (!this.code) {
+              Naji.toast.error("Please enter the verification code.");
+              return;
+            }
+
+            this.isVerifying = true;
+            try {
+              await Naji.profile.verifyUpdate(this.pendingEmail, this.code);
+            } catch (error) {
+              Naji.toast.error(error.message || "Unable to verify that code.");
+              this.isVerifying = false;
+              return;
+            }
+
+            if (this.pendingUsernameChange) {
+              Naji.storage.clearSession();
+              window.location.href = "/pages/login.html?renamed=1";
+              return;
+            }
+
+            Naji.toast.success("Your profile was updated.");
+            this.step = "edit";
+            this.isVerifying = false;
+            await this.loadProfile();
+          },
+          cancelVerification() {
+            this.step = "edit";
+            this.code = "";
+          }
+        }
+      }).mount("#app");
+    }
+  </script>
+</body>
+</html>

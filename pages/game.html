@@ -16,7 +16,13 @@
 
   <main class="container">
     <div id="app">
-      <p v-if="loadError" class="form-error">{{ loadError }}</p>
+      <div v-if="loadError" class="card state-card">
+        <h2>{{ loadErrorTitle }}</h2>
+        <p>{{ loadError }}</p>
+        <div class="state-card__actions">
+          <button type="button" class="btn btn-primary" @click="goToLobby">Back to lobby</button>
+        </div>
+      </div>
 
       <div v-else>
         <div class="room-code-banner">
@@ -42,7 +48,6 @@
                 >Kick</button>
               </li>
             </ul>
-            <p v-if="kickError" class="form-error">{{ kickError }}</p>
           </aside>
 
           <section class="card game-panel game-panel--scenario">
@@ -68,10 +73,10 @@
               v-if="isAdmin && !gameRunning"
               type="button"
               class="btn btn-primary"
+              :class="{ 'is-loading': isStarting }"
               :disabled="isStarting"
               @click="handleStartGame"
             >{{ isStarting ? "Starting..." : "Start Game" }}</button>
-            <p v-if="startError && !finalPopupOpen" class="form-error">{{ startError }}</p>
 
             <p class="game-scenario">{{ scenario }}</p>
 
@@ -83,10 +88,14 @@
                 :disabled="hasSubmitted || isSubmitting"
               ></textarea>
 
-              <p v-if="submitError" class="form-error">{{ submitError }}</p>
               <p v-if="hasSubmitted" class="form-success">Answer sent. Waiting for other players...</p>
 
-              <button type="submit" class="btn btn-primary" :disabled="hasSubmitted || isSubmitting">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :class="{ 'is-loading': isSubmitting }"
+                :disabled="hasSubmitted || isSubmitting"
+              >
                 {{ isSubmitting ? "Sending..." : "Send" }}
               </button>
             </form>
@@ -155,13 +164,12 @@
               </li>
             </ol>
 
-            <p v-if="startError" class="form-error">{{ startError }}</p>
-
             <div class="final-popup__actions">
               <button
                 v-if="isAdmin"
                 type="button"
                 class="btn btn-primary"
+                :class="{ 'is-loading': isStarting }"
                 :disabled="isStarting"
                 @click="handleStartGame"
               >{{ isStarting ? "Starting..." : "Play again" }}</button>
@@ -175,6 +183,7 @@
   </main>
 
   <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/toast.js"></script>
   <script src="../js/utils/dom.js"></script>
   <script src="../js/api/client.js"></script>
   <script src="../js/api/auth.js"></script>
@@ -201,16 +210,14 @@
             leaderboardPlayers: [],
             isRevealing: false,
             loadError: "",
+            loadErrorTitle: "",
             answerText: "",
             isSubmitting: false,
             hasSubmitted: false,
-            submitError: "",
             username: Naji.storage.getUsername(),
             isAdmin: false,
             isStarting: false,
-            startError: "",
             isKicking: false,
-            kickError: "",
             updatesBanner: "",
             roomPasscode: "",
             copied: false,
@@ -258,7 +265,8 @@
         async mounted() {
           const passCode = Naji.storage.getRoomPasscode();
           if (!passCode) {
-            this.loadError = "No active room found. Return to the lobby to join or create one.";
+            this.loadErrorTitle = "No room yet";
+            this.loadError = "You haven't joined a room. Head to the lobby to join or create one.";
             return;
           }
           this.roomPasscode = passCode;
@@ -285,7 +293,6 @@
               this.startCountdown(round.seconds);
               this.answerText = "";
               this.hasSubmitted = false;
-              this.submitError = "";
               this.gameRunning = true;
             });
 
@@ -309,7 +316,14 @@
               this.handleUpdate(body);
             });
           } catch (error) {
-            this.loadError = error.message || "Unable to load the room.";
+            if (error.status === 404) {
+              Naji.storage.clearRoomPasscode();
+              this.loadErrorTitle = "Room not found";
+              this.loadError = "That room doesn't exist any more. Head to the lobby to join or create a new one.";
+            } else {
+              this.loadErrorTitle = "Couldn't load the room";
+              this.loadError = error.message || "Something went wrong while loading the room.";
+            }
           }
         },
         beforeUnmount() {
@@ -318,10 +332,8 @@
         },
         methods: {
           async handleSubmit() {
-            this.submitError = "";
-
             if (!this.answerText.trim()) {
-              this.submitError = "Please write an answer before sending.";
+              Naji.toast.error("Please write an answer before sending.");
               return;
             }
 
@@ -330,35 +342,38 @@
               await Naji.game.submitAnswer(this.answerText.trim());
               this.hasSubmitted = true;
             } catch (error) {
-              this.submitError = error.message || "Unable to submit your answer.";
+              Naji.toast.error(error.message || "Unable to submit your answer.");
             } finally {
               this.isSubmitting = false;
             }
           },
           async handleStartGame() {
-            this.startError = "";
             this.isStarting = true;
             try {
               await Naji.game.startGame(Naji.storage.getRoomPasscode());
             } catch (error) {
-              this.startError = error.message || "Unable to start the game.";
+              Naji.toast.error(error.message || "Unable to start the game.");
             } finally {
               this.isStarting = false;
             }
           },
           async handleKick(playerName) {
-            this.kickError = "";
             this.isKicking = true;
             try {
               await Naji.room.kickPlayer(Naji.storage.getRoomPasscode(), playerName);
               this.players = this.players.filter((player) => player.userName !== playerName);
+              Naji.toast.success(`${playerName} was removed from the room.`);
             } catch (error) {
-              this.kickError = error.message || "Unable to kick that player.";
+              Naji.toast.error(error.message || "Unable to kick that player.");
             } finally {
               this.isKicking = false;
             }
           },
           copyRoomCode() {
+            if (!navigator.clipboard) {
+              Naji.toast.info("Copy isn't available on this connection. Select the code and copy it manually.");
+              return;
+            }
             navigator.clipboard.writeText(this.roomPasscode).then(() => {
               this.copied = true;
               setTimeout(() => {
@@ -396,7 +411,6 @@
               this.resultsOverlayOpen = false;
               this.leaderboardPlayers = [];
               this.updatesBanner = "";
-              this.startError = "";
               this.answerText = "";
               this.hasSubmitted = false;
               this.scenario = "Get ready, the first scenario is coming...";
@@ -521,7 +535,6 @@
             const topScore = standings.length ? standings[0].total : 0;
             this.finalStandings = standings;
             this.finalWinners = standings.filter((standing) => standing.total === topScore).map((standing) => standing.userName);
-            this.startError = "";
             this.finalPopupOpen = true;
           }
         }

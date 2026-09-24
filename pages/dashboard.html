@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Dashboard</title>
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/pages/dashboard.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="dashboard-page">
+    <div id="app">
+      <div class="dashboard-header">
+        <h1 class="gradient-text">{{ username }}</h1>
+        <p>Your game stats</p>
+      </div>
+
+      <p v-if="isLoading" class="dashboard-empty">Loading your stats...</p>
+      <p v-else-if="loadError" class="form-error dashboard-empty">{{ loadError }}</p>
+
+      <template v-else>
+        <div class="stat-grid">
+          <section v-for="stat in stats" :key="stat.label" class="card stat-card">
+            <span class="stat-card__label">{{ stat.label }}</span>
+            <span class="stat-card__value">{{ stat.value }}</span>
+            <span v-if="stat.hint" class="stat-card__hint">{{ stat.hint }}</span>
+          </section>
+        </div>
+
+        <p v-if="dashboard.totalGamesPlayed === 0" class="dashboard-empty">
+          No games yet. Finish a game and your stats will show up here.
+        </p>
+      </template>
+    </div>
+  </main>
+
+  <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/dom.js"></script>
+  <script src="../js/api/client.js"></script>
+  <script src="../js/api/auth.js"></script>
+  <script src="../js/utils/auth-guard.js"></script>
+  <script src="../js/api/dashboard.js"></script>
+  <script>
+    if (Naji.authGuard.requireAuth()) {
+      Naji.dom.loadNavbar("#navbar-mount");
+
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            username: Naji.storage.getUsername(),
+            dashboard: null,
+            isLoading: true,
+            loadError: ""
+          };
+        },
+        computed: {
+          stats() {
+            const d = this.dashboard;
+            const winRate = d.totalGamesPlayed ? Math.round((d.totalGamesWon / d.totalGamesPlayed) * 100) : 0;
+            return [
+              { label: "Games played", value: d.totalGamesPlayed },
+              { label: "Games won", value: d.totalGamesWon, hint: `${winRate}% win rate` },
+              { label: "Games lost", value: d.totalGamesLost },
+              { label: "Games drawn", value: d.totalGamesDrawn },
+              { label: "Win streak", value: d.winStreak },
+              { label: "Best game score", value: d.highestScore.toFixed(0), hint: "Total across all rounds" },
+              { label: "Average game score", value: d.averageScorePerRound.toFixed(1), hint: "Total across all rounds" }
+            ];
+          }
+        },
+        async mounted() {
+          try {
+            this.dashboard = await Naji.dashboard.getMyDashboard();
+          } catch (error) {
+            this.loadError = error.message || "Unable to load your stats.";
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      }).mount("#app");
+    }
+  </script>
+</body>
+</html>

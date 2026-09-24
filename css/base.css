@@ -64,6 +64,10 @@ p {
   color: var(--color-text-muted);
 }
 
+.card .text-muted {
+  color: #5b6f67;
+}
+
 a {
   color: inherit;
   text-decoration: none;

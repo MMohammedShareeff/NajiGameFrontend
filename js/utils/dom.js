@@ -13,6 +13,7 @@
         <li><a class="navbar__link" href="/pages/lobby.html">Lobby</a></li>
         ${roomLink}
         <li><a class="navbar__link" href="/pages/dashboard.html">Dashboard</a></li>
+        <li><a class="navbar__link" href="/pages/profile.html">Profile</a></li>
       `
       : "";
 
@@ -37,7 +38,7 @@
       return;
     }
 
-    const isLoggedIn = Boolean(window.Naji.storage.getToken());
+    const isLoggedIn = window.Naji.storage.hasValidSession();
     const hasRoom = Boolean(window.Naji.storage.getRoomPasscode());
     mount.innerHTML = navbarTemplate(isLoggedIn, hasRoom);
 

@@ -24,9 +24,7 @@
             <input type="text" v-model.trim="joinCode" placeholder="Room-ABC123" />
           </label>
 
-          <p v-if="joinError" class="form-error">{{ joinError }}</p>
-
-          <button type="submit" class="btn btn-primary" :disabled="isJoining">
+          <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isJoining }" :disabled="isJoining">
             {{ isJoining ? "Joining..." : "Join" }}
           </button>
         </form>
@@ -36,9 +34,7 @@
         <h2>Create a Room</h2>
         <p class="text-muted">Start a new room and share the code with up to four friends.</p>
 
-        <p v-if="createError" class="form-error">{{ createError }}</p>
-
-        <button type="button" class="btn btn-primary" :disabled="isCreating" @click="handleCreate">
+        <button type="button" class="btn btn-primary" :class="{ 'is-loading': isCreating }" :disabled="isCreating" @click="handleCreate">
           {{ isCreating ? "Creating..." : "Create Room" }}
         </button>
       </section>
@@ -46,6 +42,7 @@
   </main>
 
   <script src="../js/utils/storage.js"></script>
+  <script src="../js/utils/toast.js"></script>
   <script src="../js/utils/dom.js"></script>
   <script src="../js/api/client.js"></script>
   <script src="../js/api/auth.js"></script>
@@ -62,18 +59,14 @@
         data() {
           return {
             joinCode: "",
-            joinError: "",
             isJoining: false,
-            createError: "",
             isCreating: false
           };
         },
         methods: {
           async handleJoin() {
-            this.joinError = "";
-
             if (!this.joinCode) {
-              this.joinError = "Please enter a room code.";
+              Naji.toast.error("Please enter a room code.");
               return;
             }
 
@@ -82,20 +75,17 @@
               await Naji.room.joinRoom(this.joinCode);
               window.location.href = "/pages/game.html";
             } catch (error) {
-              this.joinError = error.message || "Unable to join that room.";
-            } finally {
+              Naji.toast.error(error.message || "Unable to join that room.");
               this.isJoining = false;
             }
           },
           async handleCreate() {
-            this.createError = "";
             this.isCreating = true;
             try {
               await Naji.room.createRoom();
               window.location.href = "/pages/game.html";
             } catch (error) {
-              this.createError = error.message || "Unable to create a room.";
-            } finally {
+              Naji.toast.error(error.message || "Unable to create a room.");
               this.isCreating = false;
             }
           }
