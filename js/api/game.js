@@ -4,7 +4,13 @@
   }
 
   function startGame(passCode) {
-    return window.Naji.apiClient.post(`/game/start?passCode=${encodeURIComponent(passCode)}`);
+    const lang = window.Naji.i18n ? window.Naji.i18n.language : "en";
+    return window.Naji.apiClient.post(`/game/start?passCode=${encodeURIComponent(passCode)}&lang=${lang}`);
+  }
+
+  function setLanguage(passCode) {
+    const lang = window.Naji.i18n ? window.Naji.i18n.language : "en";
+    return window.Naji.apiClient.post(`/game/language?passCode=${encodeURIComponent(passCode)}&lang=${lang}`);
   }
 
   function stopGame(passCode) {
@@ -16,5 +22,5 @@
   }
 
   window.Naji = window.Naji || {};
-  window.Naji.game = { submitAnswer, startGame, stopGame, getGameState };
+  window.Naji.game = { submitAnswer, startGame, setLanguage, stopGame, getGameState };
 })();

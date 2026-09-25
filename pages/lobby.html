@@ -4,40 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Lobby</title>
-  <link rel="stylesheet" href="../css/base.css?v=20260924i" />
-  <link rel="stylesheet" href="../css/components.css?v=20260924i" />
-  <link rel="stylesheet" href="../css/pages/lobby.css?v=20260924i" />
+  <link rel="stylesheet" href="../css/base.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/components.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/pages/lobby.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/rtl.css?v=20260925i" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <script src="../js/i18n/i18n.js?v=20260925i"></script>
+  <script src="../js/i18n/ar.js?v=20260925i"></script>
 </head>
 <body>
   <div id="navbar-mount"></div>
 
   <main class="container lobby-page">
-    <div id="app" class="lobby-grid">
-      <section class="card lobby-card">
-        <h2>Join a Room</h2>
-        <form class="lobby-form" @submit.prevent="handleJoin">
-          <label class="form-field">
-            <span>Room Code</span>
-            <input type="text" v-model.trim="joinCode" placeholder="Room-ABC123" />
-          </label>
+    <div id="app">
+      <header class="lobby-head">
+        <h1 class="page-title">Multiplayer lobby</h1>
+        <p class="lobby-head__sub">Select a deployment method. Create a new room or connect with an existing one using its room code.</p>
+      </header>
 
-          <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isJoining }" :disabled="isJoining">
-            {{ isJoining ? "Joining..." : "Join" }}
+      <div class="lobby-grid">
+        <section class="panel lobby-card">
+          <h3 class="lobby-card__heading">Join a room</h3>
+          <p class="lobby-card__text">Connect to an existing room. Enter the room code shared by your host.</p>
+          <form class="lobby-form" @submit.prevent="handleJoin">
+            <label class="form-field">
+              <span>Room code <span class="form-hint">format: Room-XXXXXX</span></span>
+              <input type="text" v-model.trim="joinCode" placeholder="Room-ABC123" />
+            </label>
+            <div class="lobby-facts">
+              <span>Room: <b>public code</b></span>
+              <span>Players: <b>up to 5</b></span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" :class="{ 'is-loading': isJoining }" :disabled="isJoining">
+              {{ isJoining ? "Joining..." : "Join room" }}
+            </button>
+          </form>
+        </section>
+
+        <section class="panel lobby-card">
+          <h3 class="lobby-card__heading">Create a room</h3>
+          <p class="lobby-card__text">Start a new room and share the code with up to four friends.</p>
+          <div class="lobby-facts lobby-facts--grid">
+            <span>Capacity: <b>5 players</b></span>
+            <span>AI arbiter: <b>active</b></span>
+            <span>Rounds: <b>5</b></span>
+            <span>Host: <b>you</b></span>
+          </div>
+          <button type="button" class="btn btn-primary btn-lg" :class="{ 'is-loading': isCreating }" :disabled="isCreating" @click="handleCreate">
+            {{ isCreating ? "Creating..." : "Create room" }}
           </button>
-        </form>
-      </section>
-
-      <section class="card lobby-card">
-        <h2>Create a Room</h2>
-        <p class="text-muted">Start a new room and share the code with up to four friends.</p>
-
-        <button type="button" class="btn btn-primary" :class="{ 'is-loading': isCreating }" :disabled="isCreating" @click="handleCreate">
-          {{ isCreating ? "Creating..." : "Create Room" }}
-        </button>
-      </section>
+        </section>
+      </div>
 
       <div v-if="dialogOpen" class="lobby-dialog-backdrop">
         <div class="card lobby-dialog" role="dialog" aria-modal="true">
@@ -61,16 +80,16 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js?v=20260924i"></script>
-  <script src="../js/utils/toast.js?v=20260924i"></script>
-  <script src="../js/utils/dom.js?v=20260924i"></script>
-  <script src="../js/api/client.js?v=20260924i"></script>
-  <script src="../js/api/invite.js?v=20260924i"></script>
-  <script src="../js/utils/invites.js?v=20260924i"></script>
-  <script src="../js/api/auth.js?v=20260924i"></script>
-  <script src="../js/utils/auth-guard.js?v=20260924i"></script>
-  <script src="../js/api/room.js?v=20260924i"></script>
-  <script src="../js/ws/socket.js?v=20260924i"></script>
+  <script src="../js/utils/storage.js?v=20260925i"></script>
+  <script src="../js/utils/toast.js?v=20260925i"></script>
+  <script src="../js/utils/dom.js?v=20260925i"></script>
+  <script src="../js/api/client.js?v=20260925i"></script>
+  <script src="../js/api/invite.js?v=20260925i"></script>
+  <script src="../js/utils/invites.js?v=20260925i"></script>
+  <script src="../js/api/auth.js?v=20260925i"></script>
+  <script src="../js/utils/auth-guard.js?v=20260925i"></script>
+  <script src="../js/api/room.js?v=20260925i"></script>
+  <script src="../js/ws/socket.js?v=20260925i"></script>
   <script>
     if (Naji.authGuard.requireAuth()) {
       Naji.dom.loadNavbar("#navbar-mount");

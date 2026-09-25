@@ -4,12 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Game</title>
-  <link rel="stylesheet" href="../css/base.css?v=20260924i" />
-  <link rel="stylesheet" href="../css/components.css?v=20260924i" />
-  <link rel="stylesheet" href="../css/pages/game.css?v=20260924i" />
+  <link rel="stylesheet" href="../css/base.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/components.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/pages/game.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/rtl.css?v=20260925i" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <script src="../js/i18n/i18n.js?v=20260925i"></script>
+  <script src="../js/i18n/ar.js?v=20260925i"></script>
 </head>
 <body>
   <div id="navbar-mount"></div>
@@ -28,7 +31,7 @@
 
       <div v-else>
         <div class="room-code-banner">
-          <span>Room Code:</span>
+          <span>Room code:</span>
           <strong>{{ roomPasscode }}</strong>
           <button type="button" class="btn btn-primary room-code-banner__copy" @click="copyRoomCode">
             {{ copied ? "Copied!" : "Copy" }}
@@ -37,10 +40,14 @@
 
         <div class="game-layout">
           <aside class="card game-panel game-panel--players">
-            <h2>Players</h2>
+            <div class="panel__head">
+              <h2 class="panel__title">Players</h2>
+              <span class="tag tag--accent">{{ players.length }} / {{ maxPlayers }} operatives</span>
+            </div>
             <ul class="player-list">
-              <li v-for="player in players" :key="player.id" class="player-list__item">
-                <span>{{ player.userName }}</span>
+              <li v-for="(player, index) in players" :key="player.id" class="player-list__item">
+                <span class="player-list__idx">0{{ index + 1 }}/</span>
+                <span class="player-list__name">{{ player.userName }}<span v-if="player.userName === lastAdmin" class="tag tag--accent">Host</span></span>
                 <button
                   v-if="isAdmin && player.userName !== username"
                   type="button"
@@ -48,6 +55,10 @@
                   :disabled="isKicking"
                   @click="handleKick(player.userName)"
                 >Kick</button>
+              </li>
+              <li v-for="slot in emptySlots" :key="'slot' + slot" class="player-list__item player-list__item--empty">
+                <span class="player-list__idx">0{{ players.length + slot }}/</span>
+                <span class="player-list__name">[empty operative bay]</span>
               </li>
             </ul>
 
@@ -88,8 +99,9 @@
 
           <section class="card game-panel game-panel--scenario">
             <div class="scenario-header">
-              <h2>Scenario</h2>
+              <h2 class="scenario-title">Scenario</h2>
               <span v-if="roundNumber" class="round-chip">Round {{ roundNumber }} / {{ totalRounds }}</span>
+              <span v-else class="tag tag--accent">Pre-launch</span>
             </div>
 
             <div
@@ -108,25 +120,26 @@
             <button
               v-if="isAdmin && !gameRunning"
               type="button"
-              class="btn btn-primary"
+              class="btn btn-primary btn-lg btn-block"
               :class="{ 'is-loading': isStarting }"
               :disabled="isStarting"
               @click="handleStartGame"
-            >{{ isStarting ? "Starting..." : "Start Game" }}</button>
+            >{{ isStarting ? "Starting..." : "Start game" }}</button>
 
             <div v-if="isAdmin && gameRunning" class="end-game">
-              <button type="button" class="btn btn-danger" @click="confirmDialog = 'end'">End game</button>
+              <button type="button" class="btn btn-danger-outline" @click="confirmDialog = 'end'">End game</button>
             </div>
 
             <p v-if="!showBoard" class="game-waiting">
               {{ isAdmin ? "Everyone in the room? Press Start Game when you're ready." : "Waiting for the host to start the game..." }}
             </p>
 
-            <p v-if="showBoard" class="game-scenario">{{ scenario }}</p>
+            <p v-if="showBoard" class="game-scenario" dir="auto">{{ scenario }}</p>
 
             <form v-if="showBoard" class="game-answer-form" @submit.prevent="handleSubmit">
               <textarea
                 class="game-answer"
+                dir="auto"
                 v-model="answerText"
                 placeholder="Type how you'd survive..."
                 :disabled="hasSubmitted || isSubmitting"
@@ -140,7 +153,7 @@
                 :class="{ 'is-loading': isSubmitting }"
                 :disabled="hasSubmitted || isSubmitting"
               >
-                {{ isSubmitting ? "Sending..." : "Send" }}
+                {{ isSubmitting ? "Sending..." : "Send answer" }}
               </button>
             </form>
 
@@ -164,13 +177,13 @@
           </section>
 
           <aside v-if="showBoard" class="card game-panel game-panel--leaderboard">
-            <h2>Leaderboard</h2>
+            <div class="panel__head"><h2 class="panel__title">Leaderboard</h2><span class="tag">Sync: live</span></div>
             <p v-if="!leaderboardPlayers.length && !isRevealing" class="text-muted">No scores yet.</p>
             <transition-group name="reveal" tag="div" class="leaderboard-cards">
               <div v-for="player in leaderboardPlayers" :key="player.userName" class="leaderboard-card">
-                <div class="leaderboard-card__name">{{ player.userName }}</div>
+                <div class="leaderboard-card__name"><span class="leaderboard-card__rank">#{{ leaderboardPlayers.indexOf(player) + 1 }}</span> {{ player.userName }}</div>
                 <div class="leaderboard-card__scores">Rounds: {{ player.scores.join(", ") || "-" }}</div>
-                <div class="leaderboard-card__total">{{ player.total }}</div>
+                <div class="leaderboard-card__total">{{ player.total }}<small>pts</small></div>
               </div>
             </transition-group>
           </aside>
@@ -178,6 +191,10 @@
 
         <div v-if="resultsOverlayOpen" class="modal-backdrop">
           <div class="results-stage">
+            <div class="results-stage__bar">
+              <span class="results-stage__bar-title">&#9632; Tactical arbiter evaluation</span>
+              <span class="tag tag--accent">{{ resultCards.length }} / {{ players.length }} evaluated</span>
+            </div>
             <div class="results-stage__header">
               <h2>Round {{ resultsRound }} of {{ totalRounds }} results</h2>
               <p>{{ isRevealingResults ? "The comedian is judging..." : "The comedian has spoken." }}</p>
@@ -187,10 +204,12 @@
               <article v-for="card in resultCards" :key="card.playerName" class="card result-card">
                 <div class="result-card__head">
                   <strong>{{ card.playerName }}</strong>
-                  <span class="result-card__answer">{{ shortAnswer(card.answer) }}</span>
+                  <span class="result-card__label">Submitted tactical plan:</span>
+                  <span class="result-card__answer" dir="auto">"{{ shortAnswer(card.answer) }}"</span>
                 </div>
+                <span class="result-card__label result-card__label--warn">&#9889; Arbiter verdict &amp; comedic autopsy:</span>
 
-                <p class="result-card__commentary">{{ card.shownCommentary }}<span v-if="!card.verdictVisible" class="typing-caret"></span></p>
+                <p class="result-card__commentary" dir="auto">{{ card.shownCommentary }}<span v-if="!card.verdictVisible" class="typing-caret"></span></p>
 
                 <transition name="verdict">
                   <div
@@ -214,8 +233,18 @@
 
         <div v-if="confirmDialog" class="modal-backdrop modal-backdrop--centered">
           <div class="card confirm-dialog" role="dialog" aria-modal="true">
-            <h2>{{ confirmDialog === "end" ? "End the game?" : "Leave this room?" }}</h2>
-            <p>{{ confirmText }}</p>
+            <div class="confirm-dialog__bar">
+              <span>[ Security protocol // {{ confirmDialog === "end" ? "game abort" : "session abort" }} ]</span>
+              <span class="tag tag--danger">{{ roomPasscode }}</span>
+            </div>
+            <div class="confirm-dialog__title">
+              <span class="confirm-dialog__icon">!</span>
+              <div>
+                <h2>{{ confirmDialog === "end" ? "End the game?" : "Leave this room?" }}</h2>
+                <span class="confirm-dialog__sub">Confirmation required</span>
+              </div>
+            </div>
+            <p class="confirm-dialog__text">{{ confirmText }}</p>
             <div class="confirm-dialog__actions">
               <button type="button" class="btn btn-secondary" :disabled="isEnding || isLeaving" @click="confirmDialog = null">
                 {{ confirmDialog === "end" ? "Keep playing" : "Stay" }}
@@ -236,9 +265,10 @@
             <h2>Game over</h2>
             <p class="final-popup__winner gradient-text">{{ finalWinnerText }}</p>
 
+            <div class="final-popup__cols"><span>Rank</span><span>Player</span><span>Rounds</span><span>Total</span></div>
             <ol class="final-popup__standings">
               <li v-for="(standing, index) in finalStandings" :key="standing.userName" class="final-popup__row">
-                <span class="final-popup__rank">{{ index + 1 }}</span>
+                <span class="final-popup__rank">#{{ index + 1 }}</span>
                 <span class="final-popup__name">{{ standing.userName }}</span>
                 <span class="final-popup__rounds">{{ standing.scores.join(" + ") }}</span>
                 <span class="final-popup__total">{{ standing.total }}</span>
@@ -269,18 +299,18 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js?v=20260924i"></script>
-  <script src="../js/utils/toast.js?v=20260924i"></script>
-  <script src="../js/utils/dom.js?v=20260924i"></script>
-  <script src="../js/api/client.js?v=20260924i"></script>
-  <script src="../js/api/invite.js?v=20260924i"></script>
-  <script src="../js/api/friends.js?v=20260924i"></script>
-  <script src="../js/utils/invites.js?v=20260924i"></script>
-  <script src="../js/api/auth.js?v=20260924i"></script>
-  <script src="../js/utils/auth-guard.js?v=20260924i"></script>
-  <script src="../js/api/room.js?v=20260924i"></script>
-  <script src="../js/api/game.js?v=20260924i"></script>
-  <script src="../js/ws/socket.js?v=20260924i"></script>
+  <script src="../js/utils/storage.js?v=20260925i"></script>
+  <script src="../js/utils/toast.js?v=20260925i"></script>
+  <script src="../js/utils/dom.js?v=20260925i"></script>
+  <script src="../js/api/client.js?v=20260925i"></script>
+  <script src="../js/api/invite.js?v=20260925i"></script>
+  <script src="../js/api/friends.js?v=20260925i"></script>
+  <script src="../js/utils/invites.js?v=20260925i"></script>
+  <script src="../js/api/auth.js?v=20260925i"></script>
+  <script src="../js/utils/auth-guard.js?v=20260925i"></script>
+  <script src="../js/api/room.js?v=20260925i"></script>
+  <script src="../js/api/game.js?v=20260925i"></script>
+  <script src="../js/ws/socket.js?v=20260925i"></script>
   <script>
     const TYPING_INTERVAL_MS = 20;
     const VERDICT_PAUSE_MS = 1500;
@@ -344,6 +374,12 @@
           };
         },
         computed: {
+          maxPlayers() {
+            return MAX_PLAYERS;
+          },
+          emptySlots() {
+            return Math.max(0, MAX_PLAYERS - this.players.length);
+          },
           showBoard() {
             return this.gameRunning || this.finalPopupOpen;
           },
@@ -393,7 +429,7 @@
             if (this.finalWinners.length === 1) {
               return `${this.finalWinners[0]} wins the game!`;
             }
-            return `It's a draw between ${this.finalWinners.join(" and ")}!`;
+            return `It's a draw between ${this.finalWinners.join(` ${Naji.i18n.t("and")} `)}!`;
           }
         },
         async mounted() {
@@ -416,6 +452,9 @@
             const admin = await Naji.room.getRoomAdmin(passCode);
             this.isAdmin = admin.userName === this.username;
             this.lastAdmin = admin.userName;
+            if (this.isAdmin) {
+              Naji.game.setLanguage(passCode).catch(() => {});
+            }
 
             const roomId = await Naji.apiClient.get(`/room/room-id?passCode=${encodeURIComponent(passCode)}`);
 
@@ -427,7 +466,7 @@
               this.resultsOverlayOpen = false;
               this.isRevealingResults = false;
               this.flushPendingLeaderboard();
-              this.scenario = round.scenario;
+              this.scenario = this.scenarioInMyLanguage(round.scenarios, round.scenario);
               this.roundNumber = round.round;
               this.totalRounds = round.totalRounds;
               this.roundPhase = "answering";
@@ -621,7 +660,7 @@
             this.gameRunning = true;
             this.roundNumber = state.round;
             this.totalRounds = state.totalRounds;
-            this.scenario = state.scenario;
+            this.scenario = this.scenarioInMyLanguage(state.scenarios, state.scenario);
             this.hasSubmitted = state.hasSubmitted;
             this.answerText = sessionStorage.getItem(this.draftKey()) || "";
             this.secondsTotal = state.secondsTotal;
@@ -819,6 +858,9 @@
               this.isRevealingResults = false;
             }
             this.updatesBanner = message;
+          },
+          scenarioInMyLanguage(scenarios, fallback) {
+            return (scenarios && scenarios[Naji.i18n.language]) || fallback;
           },
           shortAnswer(answer) {
             if (!answer) {

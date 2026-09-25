@@ -4,17 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Naji - Profile</title>
-  <link rel="stylesheet" href="../css/base.css?v=20260924i" />
-  <link rel="stylesheet" href="../css/components.css?v=20260924i" />
-  <link rel="stylesheet" href="../css/pages/profile.css?v=20260924i" />
+  <link rel="stylesheet" href="../css/base.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/components.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/pages/profile.css?v=20260925i" />
+  <link rel="stylesheet" href="../css/rtl.css?v=20260925i" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="../js/i18n/i18n.js?v=20260925i"></script>
+  <script src="../js/i18n/ar.js?v=20260925i"></script>
 </head>
 <body>
   <div id="navbar-mount"></div>
 
   <main class="profile-page">
     <div id="app">
-      <div v-if="loadError" class="card state-card">
+      <div v-if="loadError" class="panel state-card">
         <h2>Couldn't load your profile</h2>
         <p>{{ loadError }}</p>
         <div class="state-card__actions">
@@ -22,32 +25,32 @@
         </div>
       </div>
 
-      <p v-else-if="!profile" class="profile-hint" style="text-align: center; color: var(--color-text-muted)">
+      <p v-else-if="!profile" class="profile-hint profile-loading">
         Loading your profile...
       </p>
 
       <template v-else>
         <div class="profile-header">
-          <h1 class="gradient-text">{{ profile.userName }}</h1>
-          <p>Your account</p>
+          <h1 class="page-title">{{ profile.userName }}</h1>
+          <p class="page-sub">Tactical profile configuration // account</p>
         </div>
 
-        <form v-if="step === 'edit'" class="card profile-card" @submit.prevent="handleSave">
-          <h2>Edit your details</h2>
+        <form v-if="step === 'edit'" class="panel profile-card" @submit.prevent="handleSave">
+          <div class="panel__head profile-bar"><span class="profile-bar__dots"><i></i><i></i><i></i></span><h2 class="panel__title profile-bar__title">&gt; Edit your details</h2><span class="tag">Account // {{ profile.userName }}</span></div>
 
           <div class="profile-form">
             <label class="form-field">
-              <span>Username</span>
+              <span><span><b class="idx">[01]</b> Username</span></span>
               <input type="text" v-model.trim="form.userName" autocomplete="username" />
             </label>
 
             <label class="form-field">
-              <span>Email</span>
+              <span><span><b class="idx">[02]</b> Email</span></span>
               <input type="email" v-model.trim="form.email" autocomplete="email" />
             </label>
 
             <label class="form-field">
-              <span>New password</span>
+              <span><span><b class="idx">[03]</b> New password</span></span>
               <password-field
                 v-model="form.password"
                 autocomplete="new-password"
@@ -57,7 +60,7 @@
             </label>
 
             <label class="form-field">
-              <span>Confirm new password</span>
+              <span><span><b class="idx">[04]</b> Confirm new password</span></span>
               <password-field
                 v-model="form.confirmPassword"
                 autocomplete="new-password"
@@ -68,7 +71,7 @@
             </label>
           </div>
 
-          <p class="profile-hint">
+          <p class="notice profile-hint">
             Saving sends a verification code to your current email. If you change your email, a second code goes to the new address before anything is applied.
           </p>
 
@@ -79,21 +82,20 @@
           </div>
         </form>
 
-        <form v-else class="card profile-card" @submit.prevent="handleVerify">
-          <p v-if="totalVerifySteps > 1" class="profile-step">Step {{ verifyStep }} of {{ totalVerifySteps }}</p>
-          <h2>{{ verifyStep === 2 ? "Confirm your new email" : "Confirm it's you" }}</h2>
+        <form v-else class="panel profile-card" @submit.prevent="handleVerify">
+          <div class="panel__head"><h2 class="panel__title">{{ verifyStep === 2 ? "Confirm your new email" : "Confirm it's you" }}</h2><span class="tag tag--accent" v-if="totalVerifySteps > 1">Step {{ verifyStep }} of {{ totalVerifySteps }}</span></div>
           <p v-if="verifyStep === 1">
             To protect your account, we sent a verification code to your current email
-            <strong>{{ profile.email }}</strong>. It expires in 10 minutes.
+            <strong class="profile-email">{{ profile.email }}</strong> It expires in 10 minutes.
           </p>
           <p v-else>
-            Now we sent a second code to your new email <strong>{{ pendingEmail }}</strong>
+            Now we sent a second code to your new email <strong class="profile-email">{{ pendingEmail }}</strong>
             to make sure it's yours. It expires in 10 minutes.
           </p>
 
           <label class="form-field">
-            <span>Verification code</span>
-            <input type="text" v-model.trim="code" autocomplete="one-time-code" />
+            <span>Verification code <span class="form-hint">case-sensitive</span></span>
+            <input class="code-input" type="text" v-model.trim="code" autocomplete="one-time-code" />
           </label>
 
           <div class="profile-actions">
@@ -109,16 +111,16 @@
     </div>
   </main>
 
-  <script src="../js/utils/storage.js?v=20260924i"></script>
-  <script src="../js/utils/toast.js?v=20260924i"></script>
-  <script src="../js/utils/dom.js?v=20260924i"></script>
-  <script src="../js/api/client.js?v=20260924i"></script>
-  <script src="../js/api/invite.js?v=20260924i"></script>
-  <script src="../js/utils/invites.js?v=20260924i"></script>
-  <script src="../js/api/auth.js?v=20260924i"></script>
-  <script src="../js/utils/auth-guard.js?v=20260924i"></script>
-  <script src="../js/api/profile.js?v=20260924i"></script>
-  <script src="../js/components/password-field.js?v=20260924i"></script>
+  <script src="../js/utils/storage.js?v=20260925i"></script>
+  <script src="../js/utils/toast.js?v=20260925i"></script>
+  <script src="../js/utils/dom.js?v=20260925i"></script>
+  <script src="../js/api/client.js?v=20260925i"></script>
+  <script src="../js/api/invite.js?v=20260925i"></script>
+  <script src="../js/utils/invites.js?v=20260925i"></script>
+  <script src="../js/api/auth.js?v=20260925i"></script>
+  <script src="../js/utils/auth-guard.js?v=20260925i"></script>
+  <script src="../js/api/profile.js?v=20260925i"></script>
+  <script src="../js/components/password-field.js?v=20260925i"></script>
   <script>
     if (Naji.authGuard.requireAccount()) {
       Naji.dom.loadNavbar("#navbar-mount");

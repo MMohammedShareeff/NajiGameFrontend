@@ -22,7 +22,8 @@
     setTimeout(() => toast.remove(), LEAVE_MS);
   }
 
-  function show(message, type = "info") {
+  function show(rawMessage, type = "info") {
+    const message = window.Naji.i18n ? window.Naji.i18n.t(rawMessage) : rawMessage;
     const container = getContainer();
     const alreadyShown = Array.from(container.children).some((toast) => toast.textContent === message);
     if (alreadyShown) {

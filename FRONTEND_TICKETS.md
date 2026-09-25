@@ -258,3 +258,10 @@ Goal: run the game online for a small public group at about $0 with no domain (a
 ### Notes for whoever picks up a ticket
 - No backend endpoint paths above are guaranteed exact — the backend context file lists what's known and what needs a quick check against the controller source before wiring a call.
 - Keep `js/api/client.js`'s base URL as the *only* place the backend host is hardcoded, so switching between local Docker and anything else later is a one-line change.
+## FE-24: UI refactor to the terminal theme (DONE)
+
+Dark CRT look across every page: tokens and shared pieces in `css/base.css` and `css/components.css`, corner-bracket `.panel`/`.card`, `[ BRACKET ]` primary buttons, active navbar link, username chip and an automatic footer bar (`js/utils/dom.js`). All existing screens and behaviour are kept; only markup and CSS changed. Cache suffix is now `20260925a`.
+
+## FE-25: Arabic support (DONE)
+
+Interface language switch (English / Arabic) with right-to-left layout in `js/i18n/*` and `css/rtl.css`. Backend: `lang` parameter on `/game/start`, `scenario_bank.lang` (V9 with 100 Arabic scenarios), Arabic scenario and judging prompts (`GameLanguage`, `OpenAiService`, `RoundService`). Backend error messages and AI failure reasons that are not in `ar.js` stay in English.

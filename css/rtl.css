@@ -1,0 +1,157 @@
+@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap");
+
+html[lang="ar"] {
+  --font-pixel: "Tajawal", system-ui, sans-serif;
+  --font-display: "Tajawal", system-ui, sans-serif;
+  --font-mono: "Tajawal", system-ui, sans-serif;
+  --font-body: "Tajawal", system-ui, sans-serif;
+  --prompt-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><text x='2' y='13' font-family='monospace' font-weight='700' font-size='14' fill='%2322a765'>&lt;</text></svg>");
+}
+
+html[lang="ar"] * {
+  letter-spacing: 0 !important;
+}
+
+html[lang="ar"] body {
+  font-size: 16px;
+}
+
+html[lang="ar"] .btn,
+html[lang="ar"] .navbar__link,
+html[lang="ar"] .invites__toggle {
+  font-size: 15px;
+}
+
+html[lang="ar"] .page-title,
+html[lang="ar"] .hero__title,
+html[lang="ar"] .navbar__logo {
+  line-height: 1.5;
+}
+
+html[lang="ar"] .navbar__logo {
+  font-family: "Silkscreen", monospace;
+}
+
+html[lang="ar"] .room-code-banner strong,
+html[lang="ar"] .form-field input.code-input,
+html[lang="ar"] .stat-card__value,
+html[lang="ar"] .leaderboard-card__total,
+html[lang="ar"] .round-timer__label,
+html[lang="ar"] .final-popup__total,
+html[lang="ar"] .final-popup__rank {
+  font-family: "Silkscreen", "Tajawal", monospace;
+}
+
+html[lang="ar"] .room-code-banner strong,
+html[lang="ar"] .navbar__user,
+html[lang="ar"] .friends-list__name,
+html[lang="ar"] .player-list__name,
+html[lang="ar"] .leaderboard-card__name,
+html[lang="ar"] .final-popup__name,
+html[lang="ar"] .submissions__name,
+html[lang="ar"] .lobby-form input,
+html[lang="ar"] .profile-email {
+  unicode-bidi: plaintext;
+}
+
+html[lang="ar"] .room-code-banner strong {
+  direction: ltr;
+}
+
+html[dir="rtl"] .form-field input {
+  padding-left: 14px;
+  padding-right: 34px;
+  background-position: calc(100% - 13px) center;
+}
+
+html[dir="rtl"] .password-field__control input {
+  padding-left: 76px;
+}
+
+html[dir="rtl"] .password-field__toggle {
+  right: auto;
+  left: 8px;
+}
+
+html[dir="rtl"] .toast-container {
+  right: auto;
+  left: 16px;
+}
+
+html[dir="rtl"] .toast {
+  border-left: 1px solid var(--line-2);
+  border-right: 4px solid var(--accent);
+}
+
+html[dir="rtl"] .toast--error {
+  border-left-color: var(--danger-dim);
+  border-right-color: var(--danger);
+}
+
+html[dir="rtl"] .toast--leaving {
+  transform: translateX(-12px);
+}
+
+html[dir="rtl"] .invites__panel {
+  right: auto;
+  left: 0;
+}
+
+html[lang="ar"] .invites__panel::before {
+  content: "\25A0  دعوات الانضمام";
+}
+
+html[lang="ar"] .game-scenario::before {
+  content: "الموقف";
+}
+
+html[dir="rtl"] .friends-list__item {
+  border-left: 1px solid var(--line);
+  border-right: 3px solid var(--accent-dim);
+}
+
+html[dir="rtl"] .result-card__answer {
+  border-left: 0;
+  border-right: 3px solid var(--accent-dim);
+}
+
+html[dir="rtl"] .confirm-dialog__text {
+  border-left: 0;
+  border-right: 4px solid var(--danger);
+}
+
+html[dir="rtl"] .lobby-dialog p {
+  border-left: 0;
+  border-right: 3px solid var(--danger);
+}
+
+html[dir="rtl"] .round-timer__label,
+html[dir="rtl"] .leaderboard-card__total,
+html[dir="rtl"] .final-popup__total,
+html[dir="rtl"] .final-popup__cols span:last-child {
+  text-align: left;
+}
+
+html[dir="rtl"] .final-popup__cols,
+html[dir="rtl"] .final-popup__row {
+  text-align: right;
+}
+
+html[dir="rtl"] .leaderboard-card__rank {
+  margin-right: 0;
+  margin-left: 4px;
+}
+
+html[dir="rtl"] .typing-caret {
+  margin-left: 0;
+  margin-right: 2px;
+}
+
+html[dir="rtl"] .profile-bar .tag {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+html[dir="rtl"] .lang-toggle {
+  font-family: "Space Mono", monospace;
+}
