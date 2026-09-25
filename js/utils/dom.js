@@ -23,6 +23,7 @@
     const accountLinks = isGuest
       ? ""
       : `
+        <li><a class="navbar__link" href="/pages/friends.html">Friends</a></li>
         <li><a class="navbar__link" href="/pages/dashboard.html">Dashboard</a></li>
         <li><a class="navbar__link" href="/pages/profile.html">Profile</a></li>
       `;

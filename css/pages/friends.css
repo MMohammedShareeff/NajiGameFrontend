@@ -1,0 +1,85 @@
+.friends-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.friends-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.friends-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.friends-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.friends-card h2 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.friends-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: #5b6f67;
+}
+
+.friends-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.friends-empty {
+  margin: 0;
+  font-size: 14px;
+  color: #5b6f67;
+}
+
+.friends-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friends-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eef7f2;
+}
+
+.friends-list__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.friends-list__remove {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .friends-page {
+    padding: 32px 16px;
+  }
+}

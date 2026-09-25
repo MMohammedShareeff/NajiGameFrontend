@@ -209,10 +209,16 @@ Note: no comments anywhere in the code unless asked otherwise.
 
 ---
 
-## FE-19: AI rating calibration  (TODO)
-- Ratings run low for silly or short answers. Play-test with real rooms and tune the scoring prompt.
-- Consider making the survive threshold and prompt tone configurable.
-- Model names on free tiers get deprecated; move the model name to an environment variable with a clear startup log if the provider rejects it.
+## FE-19: Scenario variety and AI rating  (DONE)
+- Every game now plays a themed arc: round 1 real-world emergency, 2 comedy (absurd or awkward), 3 imagination (fantasy, sci-fi or monsters), 4 surreal or impossible, 5 epic finale or wild mash-up. The theme inside each slot is picked at random, so no two games match.
+- Scenarios are one or two vivid sentences (up to 35 words) instead of ten words, and the AI is shown the last few scenarios in the room to avoid repeats.
+- The round message and game state carry a `theme` label, not shown on screen (kept for future use).
+- Rating rubric rewritten for a party game: funny or wildly imaginative plans get at least 6, funny and clever 8 to 10, smart practical 7 to 9, ordinary sincere 5 to 6, lazy or vague 2 to 4. Checked with real AI calls: a sensible plan 8, a funny plan 8, "idk i walk" 3.
+- Scoring rules make the story match the rating (survived plans get survived stories) and give the benefit of the doubt: sheltering, hiding somewhere safe, or asking for help scores 6 or more.
+- Plans that make no real attempt (crying, giving up, doing nothing, "idk") must score exactly 0.
+- If the timer is about to run out (2 seconds left) and the player wrote something but did not press Send, the game page sends the text automatically.
+- Scenarios are written in simple everyday English (about B1 level: common words, short sentences, no slang or fancy words), at most 30 words.
+- Still open if wanted later: a configurable survive threshold and moving the AI model name into an environment variable.
 
 ---
 
@@ -223,18 +229,29 @@ Note: no comments anywhere in the code unless asked otherwise.
 
 ---
 
-## FE-21: Backend hardening  (MOSTLY DONE)
-Done:
+## FE-21: Backend hardening  (DONE)
 - Only register, login, guest, reset-password, verify-email and health/swagger are public; all else needs a token.
-- `POST /room/add-player` joins as the caller (no `userName` parameter).
-- Dashboards and account deletion are owner-only; kick/start/stop role rules now actually apply (the `/room/**` permit-all that shadowed them is gone).
-- Login lockout (10 failures, 10 minutes) and verification-code attempt limit (5 tries).
+- `POST /room/add-player` joins as the caller; `GET /room/get-players|room-id|admin` need the caller to be in that room (403 otherwise).
+- Dashboards, account reads and account deletion are owner-only; `GET /player/all` and `GET /Submission/by-id` are gone.
+- Kick, start and stop role rules apply (the permit-all that shadowed them is gone).
+- Login lockout (10 failures, 10 minutes), verification-code attempt limit (5 tries), and per-IP rate limits on register (10 / 10 min), reset-password (5), guest (30) and verify-email (20), answering 429.
 
-Still open:
-- Membership check on `/room/get-players`, `/room/admin`, `/room/room-id` (any signed-in user with a room code can read them).
-- `GET /player/all` and `GET /player/{id}` are open to any signed-in user.
-- `GET /Submission/by-id/{id}` has inverted logic (present returns 204) and no ownership check; unused by the frontend.
-- Rate limiting for register, reset-password and guest creation.
+---
+
+## FE-22: Friends list  (DONE)
+- Backend: `friend` table (migration V7); `GET /friends`, `POST /friends/add?userName`, `DELETE /friends/{userName}`. Registered players only, one-way (adding someone does not add you to their list), duplicates, self and guests refused.
+- Frontend: Friends page with add and remove, a "Friends" navbar link, and on the game page a friends list with a one-click Invite button (greyed "In room" for players already there) plus "Add to friends" next to the manual username box.
+
+---
+
+## FE-23: Deployment preparation  (DONE, hosting steps pending)
+Goal: run the game online for a small public group at about $0 with no domain (approved plan).
+- AI cost: a scenario bank (100 starter scenarios in the database, rotated least-used first, topped up daily by the AI) and one batched judging call per round. A whole game went from about 30 AI calls to about 5. Calls are size-limited (`max_tokens`), and a host can start `GAME_DAILY_LIMIT` games a day.
+- Production safety: no tokens or verification codes in logs, quiet logging and no SQL output in the `prod` profile, swagger off, CORS and WebSocket origins limited to `CORS_ALLOWED_ORIGINS`, real client IP behind the proxy for rate limits, Redis password support.
+- Frontend uses the same address as the page when not on a local dev port, so no code change is needed to move it.
+- `NajiGameBackend/deploy/`: `docker-compose.prod.yaml` (app, Postgres, Redis, Caddy with automatic HTTPS), `Caddyfile`, `.env.example`, `backup.sh` and a step-by-step `README.md`.
+- Verified locally with the production stack behind Caddy: pages, API, WebSocket, a full game, rate limiting per client, CORS rejection of other origins, no published database or Redis ports, clean logs, restart recovery.
+- Still to do by hand: create the server, the DuckDNS name, real keys and the mail account, then follow `deploy/README.md`.
 
 ---
 

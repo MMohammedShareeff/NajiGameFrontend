@@ -1,5 +1,9 @@
 (function () {
-  const API_BASE_URL = "http://localhost:8080";
+  const LOCAL_DEV_API_URL = "http://localhost:8080";
+  const STANDARD_WEB_PORTS = ["", "80", "443"];
+  const isLocalDevPage = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    && !STANDARD_WEB_PORTS.includes(window.location.port);
+  const API_BASE_URL = isLocalDevPage ? LOCAL_DEV_API_URL : "";
   const NETWORK_ERROR_MESSAGE = "Can't reach the server. Check your connection and try again.";
   const AUTH_PATHS = ["/player/login", "/player/register"];
 

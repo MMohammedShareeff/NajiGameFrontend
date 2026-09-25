@@ -554,3 +554,64 @@
   gap: 8px;
   margin-top: 16px;
 }
+
+.invite-box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.invite-box .invite-form {
+  margin-top: 0;
+}
+
+.invite-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.friend-invites {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friend-invites__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.friend-invites__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.friend-invites__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #eef7f2;
+}
+
+.friend-invites__name {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.friend-invites__btn {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+

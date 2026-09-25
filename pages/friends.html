@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naji - Friends</title>
+  <link rel="stylesheet" href="../css/base.css?v=20260924i" />
+  <link rel="stylesheet" href="../css/components.css?v=20260924i" />
+  <link rel="stylesheet" href="../css/pages/friends.css?v=20260924i" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+  <div id="navbar-mount"></div>
+
+  <main class="friends-page">
+    <div id="app">
+      <div class="friends-header">
+        <h1 class="gradient-text">Friends</h1>
+        <p>Keep your regulars here and invite them to a room with one click.</p>
+      </div>
+
+      <div v-if="loadError" class="card state-card">
+        <h2>Couldn't load your friends</h2>
+        <p>{{ loadError }}</p>
+        <div class="state-card__actions">
+          <button type="button" class="btn btn-primary" @click="loadFriends">Try again</button>
+        </div>
+      </div>
+
+      <template v-else>
+        <form class="card friends-card" @submit.prevent="handleAdd">
+          <h2>Add a friend</h2>
+          <label class="form-field">
+            <span>Their username</span>
+            <input type="text" v-model.trim="newFriend" maxlength="30" autocomplete="off" placeholder="Exact username" />
+          </label>
+          <div class="friends-actions">
+            <button type="submit" class="btn btn-primary" :class="{ 'is-loading': isAdding }" :disabled="isAdding">
+              {{ isAdding ? "Adding..." : "Add friend" }}
+            </button>
+          </div>
+        </form>
+
+        <section class="card friends-card">
+          <h2>Your friends <span class="friends-count" v-if="friends">({{ friends.length }})</span></h2>
+
+          <p v-if="friends === null" class="friends-empty">Loading...</p>
+          <p v-else-if="!friends.length" class="friends-empty">No friends yet. Add someone by their username above.</p>
+
+          <ul v-else class="friends-list">
+            <li v-for="friend in friends" :key="friend.userName" class="friends-list__item">
+              <span class="friends-list__name">{{ friend.userName }}</span>
+              <button
+                type="button"
+                class="btn btn-secondary friends-list__remove"
+                :disabled="removing === friend.userName"
+                @click="handleRemove(friend.userName)"
+              >{{ removing === friend.userName ? "Removing..." : "Remove" }}</button>
+            </li>
+          </ul>
+        </section>
+      </template>
+    </div>
+  </main>
+
+  <script src="../js/utils/storage.js?v=20260924i"></script>
+  <script src="../js/utils/toast.js?v=20260924i"></script>
+  <script src="../js/utils/dom.js?v=20260924i"></script>
+  <script src="../js/api/client.js?v=20260924i"></script>
+  <script src="../js/api/invite.js?v=20260924i"></script>
+  <script src="../js/utils/invites.js?v=20260924i"></script>
+  <script src="../js/utils/auth-guard.js?v=20260924i"></script>
+  <script src="../js/api/friends.js?v=20260924i"></script>
+  <script>
+    if (Naji.authGuard.requireAccount()) {
+      Naji.dom.loadNavbar("#navbar-mount");
+
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            friends: null,
+            loadError: "",
+            newFriend: "",
+            isAdding: false,
+            removing: ""
+          };
+        },
+        mounted() {
+          this.loadFriends();
+        },
+        methods: {
+          async loadFriends() {
+            this.loadError = "";
+            try {
+              this.friends = await Naji.friends.list();
+            } catch (error) {
+              this.loadError = error.message || "Something went wrong while loading your friends.";
+            }
+          },
+          async handleAdd() {
+            if (!this.newFriend) {
+              Naji.toast.error("Type the username of the player you want to add.");
+              return;
+            }
+
+            this.isAdding = true;
+            try {
+              const message = await Naji.friends.add(this.newFriend);
+              Naji.toast.success(message);
+              this.newFriend = "";
+              await this.loadFriends();
+            } catch (error) {
+              Naji.toast.error(error.message || "Unable to add that friend.");
+            } finally {
+              this.isAdding = false;
+            }
+          },
+          async handleRemove(userName) {
+            this.removing = userName;
+            try {
+              await Naji.friends.remove(userName);
+              this.friends = this.friends.filter((friend) => friend.userName !== userName);
+              Naji.toast.info(`${userName} was removed from your friends.`);
+            } catch (error) {
+              Naji.toast.error(error.message || "Unable to remove that friend.");
+            } finally {
+              this.removing = "";
+            }
+          }
+        }
+      }).mount("#app");
+    }
+  </script>
+</body>
+</html>
